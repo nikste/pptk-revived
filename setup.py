@@ -62,7 +62,7 @@ setup(
     name='pptk-revived',
     version='0.1.1',
     description='A Python package for facilitating point cloud processing.',
-    author='HERE Europe B.V.',
+    author='Nikolaas Steenbergen',
     classifiers=[
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering',
@@ -70,7 +70,7 @@ setup(
     license='MIT',
     install_requires=['numpy'],
     project_urls={
-        'Source': 'https://github.com/heremaps/pptk'},
+        'Source': 'https://github.com/nikste/pptk_revived'},
     packages=find_packages(),
     package_data={
         'pptk': [
