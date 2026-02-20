@@ -33,7 +33,8 @@ target_include_directories(estimate_normals PRIVATE
   ${Eigen_INCLUDE_DIR}
   ${PYTHON_INCLUDE_DIR}
   ${TBB_INCLUDE_DIR}
-  ${Numpy_INCLUDE_DIR})
+  ${Numpy_INCLUDE_DIR}
+  ${Numpy_INCLUDE_DIR}/numpy)
 copy_target(estimate_normals)
 copy_target_dependencies(estimate_normals)
 copy_file(__init__.py)

@@ -23,7 +23,8 @@ target_include_directories(vfuncs PRIVATE
   ../include  # for python_util.h
   ${PYTHON_INCLUDE_DIR}
   ${Eigen_INCLUDE_DIR}
-  ${Numpy_INCLUDE_DIR})
+  ${Numpy_INCLUDE_DIR}
+  ${Numpy_INCLUDE_DIR}/numpy)
 copy_target(vfuncs)
 copy_target_dependencies(vfuncs)
 copy_file(__init__.py)

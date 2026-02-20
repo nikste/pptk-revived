@@ -15,8 +15,7 @@
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_for.h"
 #include "tbb/scalable_allocator.h"
-#include "tbb/task.h"
-#include "tbb/task_scheduler_init.h"
+#include "tbb/task_group.h"
 inline void* Allocate(size_t size) { return scalable_malloc(size); }
 inline void Free(void* ptr) { return scalable_free(ptr); }
 #else
@@ -628,92 +627,50 @@ void SerializeHelper(std::vector<SmallNode<T> >& buf, int node_index,
 
 #ifdef USE_TBB
 template <typename T, int dim>
-class BuildTask : public tbb::task {
- public:
-  typedef typename Accumulator<T>::Type DistT;
-  typedef Node<T> NodeT;
-  BuildTask(NodeT*& node, int begin_index, int end_index,
-            std::vector<int>& indices, const Box<T, dim>& node_box,
-            const T* points, int num_points,
-            const pointkd::BuildParams& build_params)
-      : node_(node),
-        node_box_(node_box),  // makes copy of node_box
-        begin_index_(begin_index),
-        end_index_(end_index),
-        indices_(indices),
-        points_(points),
-        num_points_(num_points),
-        build_params_(build_params) {}
-
-  NodeT* get_node() const { return node_; }
-
-  tbb::task* execute() {
-    // assume node_ will not be a leaf
-    // and that node_ has already been empty-trimmed
-    int node_size = end_index_ - begin_index_;
-    if (node_size < build_params_.serial_cutoff) {
-      // perform serial k-d tree construction
-      node_ = RecursiveBuildHelper<T, dim>(begin_index_, end_index_, indices_,
-                                           node_box_, points_, num_points_,
-                                           build_params_);
-      return NULL;
-    } else {
-      NodeT* current_node = NULL;
-      node_ = MakeNode<T, dim>(current_node, begin_index_, end_index_, indices_,
-                               node_box_, points_, num_points_, build_params_);
-      // note: if current_node != NULL, then node_box_ is its extent.
-
-      if (!current_node) return NULL;
-
-      T split_value = current_node->split_value;
-      int split_index = current_node->split_index;
-      int split_dim = current_node->split_dim;
-
-      // create left task
-      BuildTask<T, dim>* left_task = NULL;
-      if (split_index > begin_index_) {
-        left_task = new (tbb::task::allocate_child()) BuildTask<T, dim>(
-            current_node->left, begin_index_, split_index, indices_, node_box_,
-            points_, num_points_, build_params_);
-        left_task->node_box_.max(split_dim) = split_value;
-      }
-
-      // create right task
-      BuildTask<T, dim>* right_task = NULL;
-      if (end_index_ > split_index) {
-        right_task = new (tbb::task::allocate_child()) BuildTask<T, dim>(
-            current_node->right, split_index, end_index_, indices_, node_box_,
-            points_, num_points_, build_params_);
-        right_task->node_box_.min(split_dim) = split_value;
-      }
-
-      // spawn tasks
-      if (left_task && right_task) {
-        set_ref_count(3);
-        spawn(*right_task);
-        spawn_and_wait_for_all(*left_task);
-      } else if (right_task) {  // left empty
-        set_ref_count(2);
-        spawn_and_wait_for_all(*right_task);
-      } else {  // right empty
-        set_ref_count(2);
-        spawn_and_wait_for_all(*left_task);
-      }
-
-      return NULL;
-    }
+void BuildHelper_TBB(Node<T>*& node, int begin_index, int end_index,
+                     std::vector<int>& indices, Box<T, dim> node_box,
+                     const T* points, int num_points,
+                     const pointkd::BuildParams& build_params) {
+  int node_size = end_index - begin_index;
+  if (node_size < build_params.serial_cutoff) {
+    node = RecursiveBuildHelper<T, dim>(begin_index, end_index, indices,
+                                       node_box, points, num_points,
+                                       build_params);
+    return;
   }
 
- private:
-  NodeT*& node_;
-  Box<T, dim> node_box_;
-  int begin_index_;
-  int end_index_;
-  std::vector<int>& indices_;
-  const T* points_;
-  int num_points_;
-  const pointkd::BuildParams& build_params_;
-};  // class BuildTask
+  Node<T>* current_node = NULL;
+  node = MakeNode<T, dim>(current_node, begin_index, end_index, indices,
+                          node_box, points, num_points, build_params);
+  if (!current_node) return;
+
+  T split_value = current_node->split_value;
+  int split_index = current_node->split_index;
+  int split_dim = current_node->split_dim;
+
+  tbb::task_group tg;
+  if (split_index > begin_index) {
+    Box<T, dim> left_box = node_box;
+    left_box.max(split_dim) = split_value;
+    tg.run([&current_node, begin_index, split_index, &indices, left_box,
+            points, num_points, &build_params]() {
+      BuildHelper_TBB<T, dim>(current_node->left, begin_index, split_index,
+                              indices, left_box, points, num_points,
+                              build_params);
+    });
+  }
+  if (end_index > split_index) {
+    Box<T, dim> right_box = node_box;
+    right_box.min(split_dim) = split_value;
+    tg.run([&current_node, split_index, end_index, &indices, right_box,
+            points, num_points, &build_params]() {
+      BuildHelper_TBB<T, dim>(current_node->right, split_index, end_index,
+                              indices, right_box, points, num_points,
+                              build_params);
+    });
+  }
+  tg.wait();
+}
 
 template <typename Q, typename T, int dim>
 struct KNearestNeighbors_ {
@@ -788,11 +745,8 @@ void BuildTree(Node<T>*& root, Box<T, dim>& bounding_box,
                                         bounding_box, points, num_points,
                                         build_params);
   } else {
-    BuildTask<T, dim>& root_task =
-        *new (tbb::task::allocate_root())
-            BuildTask<T, dim>(root, 0, (int)num_valid_points, indices,
-                              bounding_box, points, num_points, build_params);
-    tbb::task::spawn_root_and_wait(root_task);
+    BuildHelper_TBB<T, dim>(root, 0, (int)num_valid_points, indices,
+                            bounding_box, points, num_points, build_params);
   }
 #else
   root = RecursiveBuildHelper<T, dim>(0, (int)num_valid_points, indices,

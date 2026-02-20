@@ -26,7 +26,8 @@ target_include_directories(kdtree PRIVATE
   src         # for k-d tree source code
   ${TBB_INCLUDE_DIR}
   ${PYTHON_INCLUDE_DIR}
-  ${Numpy_INCLUDE_DIR} )
+  ${Numpy_INCLUDE_DIR}
+  ${Numpy_INCLUDE_DIR}/numpy )
 target_link_libraries(kdtree
   ${TBB_tbb_LIBRARY}
   ${TBB_tbbmalloc_LIBRARY})

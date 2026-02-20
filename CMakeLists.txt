@@ -5,7 +5,9 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake" ${CMAKE_CURRENT_SOURCE_DIR})
 
-find_package(PythonLibs 2.7 REQUIRED)
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+set(PYTHON_INCLUDE_DIR ${Python3_INCLUDE_DIRS})
+set(PYTHON_LIBRARY ${Python3_LIBRARIES})
 find_package(OpenGL REQUIRED)
 find_package(Numpy REQUIRED)
 find_package(TBB REQUIRED)

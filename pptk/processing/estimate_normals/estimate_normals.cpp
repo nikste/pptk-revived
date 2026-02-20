@@ -10,6 +10,7 @@
 #include "progress_bar.h"
 #include "python_util.h"
 #include "timer.h"
+#include "tbb/global_control.h"
 
 using namespace Eigen;
 using namespace std;
@@ -48,7 +49,7 @@ void estimate_normals(vector<T>* eigenvectors, vector<T>* eigenvalues,
   if (eigenvalues) eigenvalues->resize(num_normals * num_eigen);
   if (neighborhood_sizes) neighborhood_sizes->resize(num_normals);
 
-  tbb::task_scheduler_init(1);  // use just 1 thread for k-d tree queries
+  tbb::global_control global_limit(tbb::global_control::max_allowed_parallelism, 1);  // use just 1 thread for k-d tree queries
   omp_set_num_threads(num_procs);
 
   if (verbose) {

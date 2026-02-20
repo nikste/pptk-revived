@@ -6,9 +6,10 @@ import os.path
 import shutil
 import platform
 
-from pip._internal import wheel
+from packaging.tags import sys_tags
 
-wheel_tags = wheel.pep425tags.get_supported()[0]
+_tag = next(iter(sys_tags()))
+wheel_tags = (_tag.interpreter, _tag.abi, _tag.platform)
 
 system_type = platform.system()
 
@@ -58,7 +59,7 @@ def list_libs():
 
 
 setup(
-    name='pptk',
+    name='pptk-revived',
     version='0.1.1',
     description='A Python package for facilitating point cloud processing.',
     author='HERE Europe B.V.',
