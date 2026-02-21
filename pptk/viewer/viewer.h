@@ -592,6 +592,33 @@ class Viewer : public QWindow, protected OpenGLFuncs {
         renderPointsFine();
         break;
       }
+      case 11: {  // update points (keep camera)
+        qint32 numPoints;
+        comm::receiveBytes((char*)&numPoints, sizeof(qint32), clientConnection);
+        qDebug() << "Viewer: update (keep camera)" << numPoints << "points";
+        std::vector<float> positions(3 * numPoints);
+        comm::receiveBytes((char*)&positions[0],
+                           positions.size() * sizeof(float), clientConnection);
+        _points->clearPoints();
+        _points->loadPoints(positions);
+        _floor_grid->setFloorLevel(_points->getFloor());
+        renderPoints();
+        renderPointsFine();
+        break;
+      }
+      case 12: {  // append points (keep camera)
+        qint32 numPoints;
+        comm::receiveBytes((char*)&numPoints, sizeof(qint32), clientConnection);
+        qDebug() << "Viewer: append" << numPoints << "points";
+        std::vector<float> positions(3 * numPoints);
+        comm::receiveBytes((char*)&positions[0],
+                           positions.size() * sizeof(float), clientConnection);
+        _points->appendPoints(positions);
+        _floor_grid->setFloorLevel(_points->getFloor());
+        renderPoints();
+        renderPointsFine();
+        break;
+      }
       default:  // unrecognized message type
         break;
         // do nothing
