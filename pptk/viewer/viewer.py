@@ -349,7 +349,14 @@ class viewer:
 
         """
         msg = struct.pack('b', 6) + _pack_string(os.path.abspath(filename))
-        self.__send(msg)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect(('localhost', self._portNumber))
+        s.sendall(msg)
+        # Block until viewer confirms the screenshot has been written
+        ack = b''
+        while len(ack) == 0:
+            ack += s.recv(1)
+        s.close()
 
     def play(self, poses, ts=[], tlim=[-numpy.inf, numpy.inf], repeat=False,
              interp='cubic_natural'):
