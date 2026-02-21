@@ -5,6 +5,7 @@ import numpy
 import os
 import inspect
 import warnings
+import threading
 
 _viewer_dir = os.path.dirname(inspect.getfile(inspect.currentframe()))
 if not os.path.isabs(_viewer_dir):
@@ -55,11 +56,38 @@ class viewer:
             stdout=subprocess.PIPE,
             stderr=(None if debug else subprocess.PIPE))
         if debug:
-            print ('Started viewer process: %s' \
+            print('Started viewer process: %s' \
                 % os.path.join(_viewer_dir, 'viewer'))
-        x = s.accept()
-        self._portNumber = struct.unpack('H', self._process.stdout.read(2))[0]
-        # self._portNumber = struct.unpack('H',x[0].recv(2))[0]
+        # Set a timeout so we don't hang forever if viewer crashes (issues #4, #24, #55)
+        s.settimeout(10.0)
+        try:
+            x = s.accept()
+        except socket.timeout:
+            self._process.kill()
+            stderr_output = ''
+            if not debug and self._process.stderr:
+                stderr_output = self._process.stderr.read().decode('utf-8', errors='replace')
+            raise RuntimeError(
+                'Viewer process did not connect within 10 seconds. '
+                'It may have crashed.\n' + stderr_output)
+        finally:
+            s.close()
+        port_bytes = [None]
+
+        def _read_port():
+            try:
+                port_bytes[0] = self._process.stdout.read(2)
+            except Exception:
+                pass
+
+        t = threading.Thread(target=_read_port, daemon=True)
+        t.start()
+        t.join(timeout=10.0)
+        if t.is_alive() or port_bytes[0] is None or len(port_bytes[0]) < 2:
+            self._process.kill()
+            raise RuntimeError(
+                'Viewer process did not send port number within 10 seconds.')
+        self._portNumber = struct.unpack('H', port_bytes[0])[0]
 
         # upload points to viewer
         self.__load(positions)
