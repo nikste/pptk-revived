@@ -514,39 +514,32 @@ class viewer:
 
     def __send(self, msg):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(('localhost', self._portNumber))
-        totalSent = 0
-        while totalSent < len(msg):
-            sent = s.send(msg)
-            if sent == 0:
-                raise RuntimeError("socket connection broken")
-            totalSent = totalSent + sent
-        s.close()
+        try:
+            s.connect(('localhost', self._portNumber))
+            s.sendall(msg)
+        finally:
+            s.close()
 
     def __query(self, msg):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # s.setsockopt(socket.SOL_SOCKET,socket.TCP_NODELAY,1)
-        s.connect(('localhost', self._portNumber))
-        totalSent = 0
-        while totalSent < len(msg):
-            sent = s.send(msg)
-            if sent == 0:
-                raise RuntimeError("socket connection broken")
-            totalSent = totalSent + sent
-        # layout of response message:
-        # 0: data type (0 - error msg, 1 - char, 2 - float, 3 - int, 4 - uint)
-        # 1: number of dimensions (quint64)
-        # 9: dimensions (quint64)
-        # ?: body
-        lookupSize = {0: 1, 1: 1, 2: 4, 3: 4, 4: 4}
-        dataType = ord(s.recv(1))
-        numDims = struct.unpack('Q', _recv_from_socket(8, s))[0]
-        dims = struct.unpack(str(numDims) + 'Q',
-                             _recv_from_socket(numDims * 8, s))
-        numElts = numpy.prod(dims)
-        bodySize = lookupSize[dataType] * numElts
-        body = _recv_from_socket(bodySize, s)
-        s.close()
+        try:
+            s.connect(('localhost', self._portNumber))
+            s.sendall(msg)
+            # layout of response message:
+            # 0: data type (0 - error msg, 1 - char, 2 - float, 3 - int, 4 - uint)
+            # 1: number of dimensions (quint64)
+            # 9: dimensions (quint64)
+            # ?: body
+            lookupSize = {0: 1, 1: 1, 2: 4, 3: 4, 4: 4}
+            dataType = ord(s.recv(1))
+            numDims = struct.unpack('Q', _recv_from_socket(8, s))[0]
+            dims = struct.unpack(str(numDims) + 'Q',
+                                 _recv_from_socket(numDims * 8, s))
+            numElts = numpy.prod(dims)
+            bodySize = lookupSize[dataType] * numElts
+            body = _recv_from_socket(bodySize, s)
+        finally:
+            s.close()
 
         if dataType == 0:
             raise ValueError(body)
