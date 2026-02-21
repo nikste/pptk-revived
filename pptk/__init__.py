@@ -9,3 +9,20 @@ from .dimreduce import reduce_dims
 from .colors import label_to_colors
 
 __version__ = '0.1.1'
+
+
+def set(*args, **kwargs):
+    """Module-level set() is not supported (issue #64).
+
+    You need a viewer instance first::
+
+        v = pptk.viewer(xyz)
+        v.set(point_size=0.01)   # correct
+
+    """
+    raise AttributeError(
+        "pptk.set() is not a module-level function. "
+        "Create a viewer first and call set() on it:\n"
+        "    v = pptk.viewer(xyz)\n"
+        "    v.set(point_size=0.01)"
+    )
