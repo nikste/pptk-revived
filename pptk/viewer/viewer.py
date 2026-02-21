@@ -177,6 +177,60 @@ class viewer:
         self.attributes(*attr)
         self.color_map(color_map, scale)
 
+    def append(self, points):
+        """Append new points to the existing point cloud.
+
+        Keeps the current camera position. The new points are merged
+        with the existing cloud on the C++ side; only the new data is
+        sent over the socket.
+
+        Note: per-point attributes and selection are reset after append.
+        Call ``attributes()`` again with data sized for the combined
+        cloud if needed.
+
+        Args:
+            points: (M, 3) array-like of new point positions.
+
+        Examples:
+
+            >>> v = pptk.viewer(np.random.rand(100, 3))
+            >>> v.append(np.random.rand(50, 3))
+            >>> v.get('num_points')  # returns 150
+
+        """
+        positions = numpy.asarray(points, dtype=numpy.float32).reshape(-1, 3)
+        self.__append(positions)
+
+    def animate(self, clouds, fps=10, loop=False):
+        """Animate through a sequence of point clouds.
+
+        Replaces the current point cloud with each entry in *clouds*,
+        pausing between frames to match the target *fps*.  The camera
+        position is preserved across frames so the user can freely
+        orbit/zoom during playback.
+
+        Args:
+            clouds: Iterable of (N_i, 3) array-like point clouds.
+            fps (float): Target frames per second (default 10).
+            loop (bool): If True, repeat the animation indefinitely.
+                Stop with Ctrl-C.
+        """
+        import time
+        interval = 1.0 / fps
+        clouds = list(clouds)
+        try:
+            while True:
+                for cloud in clouds:
+                    positions = numpy.asarray(cloud, dtype=numpy.float32).reshape(-1, 3)
+                    self.__update(positions)
+                    self.get('num_points')  # sync fence: wait for viewer to finish
+                    time.sleep(interval)
+                if not loop:
+                    break
+        except (ConnectionRefusedError, ConnectionResetError, BrokenPipeError,
+                OSError, KeyboardInterrupt):
+            pass
+
     def attributes(self, *attr):
         """ Loads point attributes
 
@@ -438,6 +492,24 @@ class viewer:
         msg = struct.pack('b', 1) \
             + struct.pack('i', numPoints) + positions.tostring()
         # send message to viewer
+        self.__send(msg)
+
+    def __update(self, positions):
+        """Replace points without resetting the camera (message type 11)."""
+        if positions.size == 0:
+            return
+        numPoints = int(positions.size / 3)
+        msg = struct.pack('b', 11) \
+            + struct.pack('i', numPoints) + positions.tostring()
+        self.__send(msg)
+
+    def __append(self, positions):
+        """Append points to existing cloud without resetting the camera (message type 12)."""
+        if positions.size == 0:
+            return
+        numPoints = int(positions.size / 3)
+        msg = struct.pack('b', 12) \
+            + struct.pack('i', numPoints) + positions.tostring()
         self.__send(msg)
 
     def __send(self, msg):

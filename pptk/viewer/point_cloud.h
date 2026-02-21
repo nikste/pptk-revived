@@ -84,6 +84,74 @@ class PointCloud : protected OpenGLFuncs {
     initColors();
   }
 
+  void appendPoints(std::vector<float>& new_positions) {
+    std::size_t num_new = new_positions.size() / 3;
+    if (num_new == 0) return;
+
+    // If no points loaded yet, delegate to loadPoints
+    if (_num_points == 0) {
+      loadPoints(new_positions);
+      return;
+    }
+
+    // Truncate _positions to real points only (remove octree centroids)
+    _positions.resize(_num_points * 3);
+
+    // Append new positions
+    _positions.insert(_positions.end(), new_positions.begin(),
+                      new_positions.end());
+    _num_points = _positions.size() / 3;
+
+    // Rebuild octree (reorders _positions and appends centroids)
+    _sizes.clear();
+    _octree.buildTree(_positions, _sizes, 32);
+    _octree_ids.reserve(_num_points);
+
+    // Recompute bounding box
+    _full_box = vltools::Box3<float>();
+    _full_box.addPoints(&_positions[0], _num_points);
+
+    // Delete old GPU buffers and recreate with combined data
+    _context->makeCurrent(_window);
+
+    glDeleteBuffers(1, &_buffer_positions);
+    glDeleteBuffers(1, &_buffer_colors);
+    glDeleteBuffers(1, &_buffer_scalars);
+    glDeleteBuffers(1, &_buffer_sizes);
+    glDeleteBuffers(1, &_buffer_selection_mask);
+    glDeleteBuffers(1, &_buffer_octree_ids);
+
+    glGenBuffers(1, &_buffer_positions);
+    glBindBuffer(GL_ARRAY_BUFFER, _buffer_positions);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * _positions.size(),
+                 (GLvoid*)&_positions[0], GL_STATIC_DRAW);
+
+    glGenBuffers(1, &_buffer_colors);
+
+    glGenBuffers(1, &_buffer_scalars);
+
+    glGenBuffers(1, &_buffer_sizes);
+    glBindBuffer(GL_ARRAY_BUFFER, _buffer_sizes);
+    glBufferData(GL_ARRAY_BUFFER, _sizes.size() * sizeof(float),
+                 (GLvoid*)&_sizes[0], GL_STATIC_DRAW);
+
+    glGenBuffers(1, &_buffer_selection_mask);
+    glBindBuffer(GL_ARRAY_BUFFER, _buffer_selection_mask);
+    glBufferData(GL_ARRAY_BUFFER, _positions.size() / 3 * sizeof(float), NULL,
+                 GL_DYNAMIC_DRAW);
+
+    glGenBuffers(1, &_buffer_octree_ids);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _buffer_octree_ids);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, _num_points * sizeof(unsigned int),
+                 NULL, GL_DYNAMIC_DRAW);
+
+    _context->doneCurrent();
+
+    _selected_ids.clear();
+    _attributes.reset();
+    initColors();
+  }
+
   void clearPoints() {
     clearAttributes();
     if (_num_points == 0) return;
