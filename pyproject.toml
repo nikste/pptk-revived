@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=64", "wheel", "packaging", "numpy<2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pptk-revived"
+version = "0.1.1"
+requires-python = ">=3.9"
+dependencies = ["numpy<2", "pillow"]
+description = "A Python package for facilitating point cloud processing."
+license = "MIT"
+authors = [{name = "Nikolaas Steenbergen"}]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.urls]
+Source = "https://github.com/nikste/pptk_revived"
+
+[tool.uv]
+dev-dependencies = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "requires_display: marks tests that require a display (deselect with '-m not requires_display')",
+    "build: end-to-end build/install tests; needs cmake + Qt5 + TBB + Eigen",
+]

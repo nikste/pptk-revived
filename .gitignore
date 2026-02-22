@@ -1,3 +1,17 @@
 build
 venv
 .venv
+_cmake_build
+dist
+*.egg-info
+__pycache__
+*.pyc
+*.so
+*.so.*
+CMakeFiles
+cmake_install.cmake
+Makefile
+pptk/viewer/viewer
+pptk/LICENSE
+pr-descriptions
+uv.lock

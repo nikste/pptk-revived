@@ -70,9 +70,15 @@ For more advanced examples, see [tutorials](https://heremaps.github.io/pptk/tuto
 
 ## Build
 
-### Requirements
+pptk-revived contains C++ extensions (Qt viewer, k-d tree, normal estimator)
+that must be compiled before packaging. The build process is:
 
-* [Python](https://www.python.org/) 3.8+
+1. Compile C++ extensions with CMake
+2. Package the compiled artifacts into a wheel
+
+### System requirements
+
+* [Python](https://www.python.org/) 3.9+
 * [Qt5](https://www.qt.io/)
 * [TBB](https://github.com/oneapi-src/oneTBB) (libtbb-dev)
 * [Eigen](http://eigen.tuxfamily.org) 3.x (libeigen3-dev)
@@ -80,36 +86,53 @@ For more advanced examples, see [tutorials](https://heremaps.github.io/pptk/tuto
 * CMake 3.5+
 * patchelf (Linux only)
 
-On Ubuntu/Debian, install dependencies with:
+On Ubuntu/Debian:
 
 ```bash
 sudo apt install build-essential cmake patchelf libtbb-dev libeigen3-dev qtbase5-dev libqt5opengl5-dev
-pip install numpy
 ```
 
-### Linux / Mac
+### Build with uv (recommended)
 
 ```bash
-# Create a venv (optional but recommended)
+# 1. Compile C++ extensions
+mkdir _cmake_build && cd _cmake_build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . -- -j$(nproc)
+cd ..
+
+# 2. Package into a wheel (uv detects the pre-compiled .so files and skips cmake)
+uv build
+
+# 3. Install the wheel
+uv pip install dist/pptk_revived-*.whl
+```
+
+### Build with pip / venv
+
+```bash
+# 1. Create a venv
 python3 -m venv venv && source venv/bin/activate
 pip install numpy
 
-# Configure and build
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
+# 2. Compile C++ extensions
+mkdir _cmake_build && cd _cmake_build
+cmake .. -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE=$(which python)
+cmake --build . -- -j$(nproc)
+cd ..
 
-# Package and install
+# 3. Package and install
 python setup.py bdist_wheel
 pip install dist/pptk_revived-*.whl --force-reinstall
 ```
 
 ### Windows
 
-```
-mkdir build && cd build
+```bat
+mkdir _cmake_build && cd _cmake_build
 cmake -G "NMake Makefiles" ..
 nmake
+cd ..
 python setup.py bdist_wheel
 pip install dist\pptk_revived-*.whl
 ```
