@@ -1,0 +1,58 @@
+name: Build and packaging tests
+
+# Run the Layer 2 @pytest.mark.build tests on an ubuntu runner with all
+# native dependencies (Qt5, TBB, Eigen, cmake) pre-installed.
+#
+# Layer 2 test flow (tests/test_build.py):
+#   1. test_cmake_build       — compiles C++ extensions with cmake
+#   2. test_uv_build_succeeds — uv build produces a wheel + sdist
+#   3. test_uv_build_skips_cmake — second uv build skips cmake (artifacts cached)
+#   4. test_wheel_installs_and_imports — install wheel in fresh venv, import pptk
+#   5. test_wheel_contains_required_files — wheel contains .so + viewer binary
+
+on:
+  push:
+    branches:
+      - main
+      - gh-pages
+      - 'feature/**'
+      - 'fix/**'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    name: Build test (Ubuntu 22.04, Python 3.12)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            cmake \
+            patchelf \
+            qtbase5-dev \
+            libqt5opengl5-dev \
+            libtbb-dev \
+            libeigen3-dev \
+            libgl1-mesa-dev
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pytest and test dependencies
+        run: pip install pytest "numpy<2" pillow
+
+      # Layer 2 tests are self-contained: test_cmake_build runs cmake directly,
+      # and test_uv_build_* invoke 'uv build' (which triggers cmake via setup.py
+      # build_ext when .so files are absent from the source tree).
+      - name: Run Layer 2 build tests
+        run: pytest tests/test_build.py -m build -v

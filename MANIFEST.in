@@ -1,0 +1,11 @@
+# Include CMake build system files so that `uv build` / `pip wheel` can
+# compile C++ extensions from the source distribution (sdist).
+
+include CMakeLists.txt
+recursive-include cmake *.cmake
+recursive-include pptk CMakeLists.txt *.cmake *.cpp *.h *.cu
+# Pre-compiled artifacts — included when present so the sdist-to-wheel build
+# can skip cmake.  setuptools silently ignores missing files in MANIFEST.in.
+recursive-include pptk *.so *.so.* *.pyd *.dylib
+include pptk/viewer/viewer
+recursive-include licenses *
