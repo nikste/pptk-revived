@@ -4,7 +4,8 @@ function(copy_system_file x)
   if(ARGC EQUAL 2)
     set(y ${ARGV1})
   endif()
-  find_file(temp ${x} ${y})
+  find_file(temp ${x} PATHS ${y} NO_DEFAULT_PATH)
+  message(STATUS "copy_system_file: ${x} -> found: ${temp}")
   copy_file(${temp} _target)
   if(UNIX AND NOT APPLE)
     add_custom_command(TARGET ${_target} POST_BUILD COMMAND
@@ -35,6 +36,16 @@ elseif (APPLE)
 elseif (UNIX)
   # create local copies of system libraries that are required by pptk targets
   # but not provided by a bare bone manylinux1 platform, as specified in PEP 513
+
+  # Detect multiarch tuple (e.g. x86_64-linux-gnu) if cmake didn't set it
+  if (NOT CMAKE_LIBRARY_ARCHITECTURE)
+    execute_process(
+      COMMAND ${CMAKE_CXX_COMPILER} -print-multiarch
+      OUTPUT_VARIABLE CMAKE_LIBRARY_ARCHITECTURE
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET)
+  endif()
+
   if (CMAKE_LIBRARY_ARCHITECTURE)
     set(_paths
       /lib/${CMAKE_LIBRARY_ARCHITECTURE}
