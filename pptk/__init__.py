@@ -5,4 +5,6 @@ from .points.expr import *
 from .kdtree import kdtree
 from .processing.estimate_normals.estimate_normals import estimate_normals
 
+from .projection import project
+
 __version__ = '0.1.1'
