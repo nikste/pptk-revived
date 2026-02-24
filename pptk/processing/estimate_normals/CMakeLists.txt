@@ -17,7 +17,8 @@ if(WIN32)
 elseif(APPLE)
   set(_link_flags "${_link_flags} -undefined dynamic_lookup")
 elseif(UNIX)
-  set(_link_flags "${_link_flags} -static-libstdc++")
+  # Do not use -static-libstdc++; it conflicts with the dynamic libstdc++
+  # already loaded by Python/NumPy and causes segfaults in std::cout.
 endif()
 set_target_properties(estimate_normals PROPERTIES
   COMPILE_FLAGS ${OpenMP_CXX_FLAGS}

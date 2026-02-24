@@ -17,8 +17,8 @@ elseif(APPLE)
   set_target_properties(kdtree PROPERTIES
     LINK_FLAGS "-undefined dynamic_lookup")
 elseif(UNIX)
-  set_target_properties(kdtree PROPERTIES
-    LINK_FLAGS "-static-libstdc++")
+  # Do not use -static-libstdc++; it conflicts with the dynamic libstdc++
+  # already loaded by Python/NumPy and causes segfaults.
 endif()
 target_compile_definitions(kdtree PRIVATE -DUSE_TBB)
 target_include_directories(kdtree PRIVATE

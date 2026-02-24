@@ -16,8 +16,8 @@ elseif(APPLE)
   set_target_properties(vfuncs PROPERTIES
     LINK_FLAGS "-undefined dynamic_lookup")
 elseif(UNIX)
-  set_target_properties(vfuncs PROPERTIES
-    LINK_FLAGS "-static-libstdc++")
+  # Do not use -static-libstdc++; it conflicts with the dynamic libstdc++
+  # already loaded by Python/NumPy and causes segfaults.
 endif()
 target_include_directories(vfuncs PRIVATE
   ../include  # for python_util.h
