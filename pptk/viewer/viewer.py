@@ -7,7 +7,7 @@ import inspect
 import warnings
 
 _viewer_dir = os.path.dirname(inspect.getfile(inspect.currentframe()))
-if ~os.path.isabs(_viewer_dir):
+if not os.path.isabs(_viewer_dir):
     _viewer_dir = os.path.abspath(_viewer_dir)
 
 __all__ = ['viewer']
