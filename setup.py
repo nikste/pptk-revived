@@ -64,6 +64,7 @@ class CMakeBuild(build_ext):
 
     def run(self):
         src_dir = os.path.dirname(os.path.abspath(__file__))
+        build_dir = os.path.join(src_dir, '_cmake_build')
 
         # If all pre-compiled artifacts already exist (e.g. when installing
         # from a pre-built sdist or editable install), skip the cmake step.
@@ -74,11 +75,20 @@ class CMakeBuild(build_ext):
             os.path.join(src_dir, 'pptk', 'vfuncs', make_mod('vfuncs')),
             os.path.join(src_dir, 'pptk', 'viewer', make_exe('viewer')),
         ]
+
+        # PPTK_FORCE_CMAKE=1 deletes cached artifacts so cmake always runs.
+        if os.environ.get('PPTK_FORCE_CMAKE', '') == '1':
+            print('PPTK_FORCE_CMAKE=1: removing cached artifacts and build dir.')
+            for a in artifacts:
+                if os.path.exists(a):
+                    os.remove(a)
+            if os.path.isdir(build_dir):
+                shutil.rmtree(build_dir)
+
         if all(os.path.exists(a) for a in artifacts):
             print('Pre-compiled artifacts found; skipping cmake build.')
             return
 
-        build_dir = os.path.join(src_dir, '_cmake_build')
         os.makedirs(build_dir, exist_ok=True)
 
         # Configure — pass the active Python so cmake finds numpy in the venv
