@@ -304,7 +304,7 @@ class TestQueries(unittest.TestCase):
             d = numpy.sum(numpy.square(self.P - q), axis=1)
             J[i, :] = numpy.argsort(d)[:k]
 
-        R = numpy.vstack(x for x in self.P.NBHDS(self.Q, k=k))
+        R = numpy.vstack([x for x in self.P.NBHDS(self.Q, k=k)])
         self.assertTrue((J == R).all())
 
     def test_rnear(self):

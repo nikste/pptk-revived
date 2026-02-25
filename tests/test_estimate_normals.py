@@ -151,7 +151,7 @@ class TestEstimateNormals(unittest.TestCase):
 
         s = [0, 3, 4, -1]
 
-        mask = np.zeros(10, dtype=np.bool)
+        mask = np.zeros(10, dtype=np.bool_)
         mask[s] = True
         z = pptk.estimate_normals(y, k, r,
                                   subsample=mask,
@@ -163,7 +163,7 @@ class TestEstimateNormals(unittest.TestCase):
         self.assertTrue(np.allclose(z[1][:, -1], evals[s]))
         self.assertTrue(np.all(z[2] == nbhd_sizes[s]))
 
-        mask = np.zeros(2, dtype=np.bool)
+        mask = np.zeros(2, dtype=np.bool_)
         with self.assertRaises(ValueError):
             pptk.estimate_normals(y, k, r,
                                   subsample=mask,
