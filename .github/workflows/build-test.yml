@@ -12,13 +12,13 @@ name: Build and packaging tests
 
 on:
   push:
-    branches:
-      - main
-      - gh-pages
-      - 'feature/**'
-      - 'fix/**'
+    branches: [main, gh-pages]
   pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-test:
