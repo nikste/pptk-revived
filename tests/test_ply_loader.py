@@ -8,8 +8,7 @@ import pptk
 def _make_ascii_ply(vertices, colors=None):
     has_color = colors is not None
     lines = [b"ply", b"format ascii 1.0",
-             "element vertex %d" % len(vertices)]
-    lines[-1] = lines[-1].encode()
+             ("element vertex %d" % len(vertices)).encode()]
     for prop in ["x", "y", "z"]:
         lines.append(("property float %s" % prop).encode())
     if has_color:
@@ -22,29 +21,20 @@ def _make_ascii_ply(vertices, colors=None):
             lines.append(("%s %s %s %s %s %s" % (v[0], v[1], v[2], c[0], c[1], c[2])).encode())
         else:
             lines.append(("%s %s %s" % (v[0], v[1], v[2])).encode())
-    return b"
-".join(lines) + b"
-"
+    return b"\n".join(lines) + b"\n"
 
 
 def _make_binary_ply(vertices):
     header = (
-        b"ply
-"
-        b"format binary_little_endian 1.0
-"
-        + ("element vertex %d
-" % len(vertices)).encode()
-        + b"property float x
-"
-        + b"property float y
-"
-        + b"property float z
-"
-        + b"end_header
-"
+        b"ply\n"
+        b"format binary_little_endian 1.0\n"
+        + ("element vertex %d\n" % len(vertices)).encode()
+        + b"property float x\n"
+        + b"property float y\n"
+        + b"property float z\n"
+        + b"end_header\n"
     )
-    body = struct.pack("%df" % (3*len(vertices)), *[v for row in vertices for v in row])
+    body = struct.pack("%df" % (3 * len(vertices)), *[v for row in vertices for v in row])
     return header + body
 
 
