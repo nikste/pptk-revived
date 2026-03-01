@@ -13,13 +13,15 @@ wheel_tags = (_tag.interpreter, _tag.abi, _tag.platform)
 
 system_type = platform.system()
 
-license_text = b''
-with open('LICENSE', 'rb') as fd:
-    license_text = license_text + fd.read()
-with open(os.path.join('licenses', 'LICENSE.append.txt'), 'rb') as fd:
-    license_text = license_text + fd.read()
-with open(os.path.join('pptk', 'LICENSE'), 'wb') as fd:
-    fd.write(license_text)
+license_append = os.path.join('licenses', 'LICENSE.append.txt')
+if os.path.exists(license_append):
+    license_text = b''
+    with open('LICENSE', 'rb') as fd:
+        license_text = license_text + fd.read()
+    with open(license_append, 'rb') as fd:
+        license_text = license_text + fd.read()
+    with open(os.path.join('pptk', 'LICENSE'), 'wb') as fd:
+        fd.write(license_text)
 
 def make_mod(x):
     if system_type == 'Windows':
