@@ -40,8 +40,8 @@ class viewer:
             >>> v.set(point_size=0.005)
 
         """
-        # ensure positions is 3-column array of float32s
-        positions = numpy.asarray(args[0], dtype=numpy.float32).reshape(-1, 3)
+        # parse positions as float64 to preserve precision before centering
+        positions = numpy.asarray(args[0], dtype=numpy.float64).reshape(-1, 3)
         attr = args[1:]
         color_map = kwargs.get('color_map', 'jet')
         scale = kwargs.get('scale', None)
@@ -89,8 +89,13 @@ class viewer:
                 'Viewer process did not send port number within 10 seconds.')
         self._portNumber = struct.unpack('H', port_bytes[0])[0]
 
+        # Auto-center to avoid float32 precision loss with large coordinates
+        self._offset = positions.mean(axis=0)  # float64
+        positions_centered = numpy.asarray(
+            positions - self._offset, dtype=numpy.float32)
+
         # upload points to viewer
-        self.__load(positions)
+        self.__load(positions_centered)
         self.attributes(*attr)
         self.color_map(color_map, scale)
 
@@ -170,6 +175,8 @@ class viewer:
             msg = struct.pack('b', 13) + struct.pack('ii', int(w), int(h))
             self.__send_and_wait(msg)
         for prop, val in kwargs.items():
+            if prop == 'lookat' and hasattr(self, '_offset'):
+                val = numpy.asarray(val, dtype=numpy.float64) - self._offset
             self.__send(_construct_set_msg(prop, val))
 
     def get(self, prop_name):
@@ -199,7 +206,10 @@ class viewer:
             >>> v.get('selected')
 
         """
-        return self.__query(_construct_get_msg(prop_name))
+        result = self.__query(_construct_get_msg(prop_name))
+        if prop_name in ('eye', 'lookat') and hasattr(self, '_offset'):
+            result = result + self._offset
+        return result
 
     def load(self, *args, **kwargs):
         """Load a new point cloud into the viewer.
@@ -213,15 +223,27 @@ class viewer:
             color_map: Color map name or array (default ``'jet'``).
             scale: Color map scale interval.
         """
-        positions = numpy.asarray(args[0], dtype=numpy.float32).reshape(-1, 3)
+        positions = numpy.asarray(args[0], dtype=numpy.float64).reshape(-1, 3)
         attr = args[1:]
         color_map = kwargs.get('color_map', 'jet')
         scale = kwargs.get('scale', None)
         preserve_camera = kwargs.get('preserve_camera', False)
+        old_offset = getattr(self, '_offset', numpy.zeros(3))
+        self._offset = positions.mean(axis=0)  # float64
+        positions_centered = numpy.asarray(
+            positions - self._offset, dtype=numpy.float32)
         if preserve_camera:
-            self.__update(positions)
+            # Adjust the C++ camera lookat for the offset change so that
+            # the camera stays pointed at the same world-space position.
+            delta = numpy.asarray(
+                old_offset - self._offset, dtype=numpy.float32)
+            self.__update(positions_centered)
+            if numpy.any(delta != 0):
+                centered_lookat = self.__query(_construct_get_msg('lookat'))
+                new_centered = centered_lookat + delta
+                self.__send(_construct_set_msg('lookat', new_centered.flatten()))
         else:
-            self.__load(positions)
+            self.__load(positions_centered)
         self.attributes(*attr)
         self.color_map(color_map, scale)
 
@@ -246,8 +268,10 @@ class viewer:
             >>> v.get('num_points')  # returns 150
 
         """
-        positions = numpy.asarray(points, dtype=numpy.float32).reshape(-1, 3)
-        self.__append(positions)
+        positions = numpy.asarray(points, dtype=numpy.float64).reshape(-1, 3)
+        positions_centered = numpy.asarray(
+            positions - self._offset, dtype=numpy.float32)
+        self.__append(positions_centered)
 
     def animate(self, clouds, fps=10, loop=False):
         """Animate through a sequence of point clouds.
@@ -269,8 +293,10 @@ class viewer:
         try:
             while True:
                 for cloud in clouds:
-                    positions = numpy.asarray(cloud, dtype=numpy.float32).reshape(-1, 3)
-                    self.__update(positions)
+                    positions = numpy.asarray(cloud, dtype=numpy.float64).reshape(-1, 3)
+                    positions_centered = numpy.asarray(
+                        positions - self._offset, dtype=numpy.float32)
+                    self.__update(positions_centered)
                     self.get('num_points')  # sync fence: wait for viewer to finish
                     time.sleep(interval)
                 if not loop:
@@ -439,6 +465,9 @@ class viewer:
         poses, ts = _fix_poses_ts_input(poses, ts)
         if poses.size == 0:
             return
+        if hasattr(self, '_offset'):
+            poses = poses.copy()
+            poses[:, :3] -= numpy.float32(self._offset)
         msg = struct.pack('b', 8) \
             + struct.pack('i', poses.shape[0]) + poses.tobytes() \
             + struct.pack('i', ts.size) + ts.tobytes() \
@@ -484,6 +513,9 @@ class viewer:
         poses, ts = _fix_poses_ts_input(poses, ts)
         if poses.size == 0:
             return
+        if hasattr(self, '_offset'):
+            poses = poses.copy()
+            poses[:, :3] -= numpy.float32(self._offset)
         # load camera path
         msg = struct.pack('b', 8) + \
             struct.pack('i', poses.shape[0])+poses.tobytes() + \
