@@ -29,7 +29,7 @@ class Final(type):
 
 
 def _memaddr(obj):
-    return obj.ctypes.get_data()
+    return obj.ctypes.data
 
 
 def points(object, dtype=None, copy=True):

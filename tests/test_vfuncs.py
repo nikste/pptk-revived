@@ -167,7 +167,10 @@ class TestIndexing(unittest.TestCase):
 
     def setUp(self):
         np.random.seed(0)
-        self.A = np.matrix(np.float32(np.random.rand(10, 11)))
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", PendingDeprecationWarning)
+            self.A = np.asmatrix(np.float32(np.random.rand(10, 11)))
         self.J = [2, 5]
         self.S = slice(None, None, None)
         self.B = np.array([

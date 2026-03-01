@@ -269,7 +269,7 @@ class viewer:
             if len(x.shape) == 1:
                 if x.shape[0] != self.get('num_points') and x.shape[0] != 1:
                     raise ValueError(error_msg % i)
-                msg += struct.pack('QQ', x.shape[0], 1) + x.tostring()
+                msg += struct.pack('QQ', x.shape[0], 1) + x.tobytes()
             # array of rgb or rgba
             elif len(x.shape) == 2 and (x.shape[-1] == 4 or x.shape[-1] == 3):
                 if x.shape[0] != self.get('num_points') and x.shape[0] != 1:
@@ -277,7 +277,7 @@ class viewer:
                 if x.shape[-1] == 3:
                     x = numpy.c_[x,
                                  numpy.ones(x.shape[0], dtype=numpy.float32)]
-                msg += struct.pack('QQ', * x.shape) + x.tostring()
+                msg += struct.pack('QQ', * x.shape) + x.tobytes()
             else:
                 raise ValueError('%d-th ' % i +
                                  'attribute array shape is not supported')
@@ -385,8 +385,8 @@ class viewer:
         if poses.size == 0:
             return
         msg = struct.pack('b', 8) \
-            + struct.pack('i', poses.shape[0]) + poses.tostring() \
-            + struct.pack('i', ts.size) + ts.tostring() \
+            + struct.pack('i', poses.shape[0]) + poses.tobytes() \
+            + struct.pack('i', ts.size) + ts.tobytes() \
             + struct.pack('b', _interp_code[interp])
         self.__send(msg)
         msg = struct.pack('b', 9) \
@@ -431,8 +431,8 @@ class viewer:
             return
         # load camera path
         msg = struct.pack('b', 8) + \
-            struct.pack('i', poses.shape[0])+poses.tostring() + \
-            struct.pack('i', ts.size)+ts.tostring() + \
+            struct.pack('i', poses.shape[0])+poses.tobytes() + \
+            struct.pack('i', ts.size)+ts.tobytes() + \
             struct.pack('b', _interp_code[interp])
         self.__send(msg)
 
@@ -490,7 +490,7 @@ class viewer:
         # construct message
         numPoints = int(positions.size / 3)
         msg = struct.pack('b', 1) \
-            + struct.pack('i', numPoints) + positions.tostring()
+            + struct.pack('i', numPoints) + positions.tobytes()
         # send message to viewer
         self.__send(msg)
 
@@ -500,7 +500,7 @@ class viewer:
             return
         numPoints = int(positions.size / 3)
         msg = struct.pack('b', 11) \
-            + struct.pack('i', numPoints) + positions.tostring()
+            + struct.pack('i', numPoints) + positions.tobytes()
         self.__send(msg)
 
     def __append(self, positions):
@@ -509,7 +509,7 @@ class viewer:
             return
         numPoints = int(positions.size / 3)
         msg = struct.pack('b', 12) \
-            + struct.pack('i', numPoints) + positions.tostring()
+            + struct.pack('i', numPoints) + positions.tobytes()
         self.__send(msg)
 
     def __send(self, msg):
@@ -614,11 +614,11 @@ def _encode_float(x):
 
 
 def _encode_floats(x):
-    return numpy.asarray(x, dtype=numpy.float32).tostring()
+    return numpy.asarray(x, dtype=numpy.float32).tobytes()
 
 
 def _encode_uints(x):
-    return numpy.asarray(numpy.uint32(x)).tostring()
+    return numpy.asarray(numpy.uint32(x)).tobytes()
 
 
 def _encode_uint(x):
@@ -646,7 +646,7 @@ def _encode_rgba(x):
 def _encode_rgbas(x):
     x = numpy.asarray(numpy.float32(x))
     if x.shape[1] == 4 and numpy.all(numpy.logical_and(x >= 0.0, x <= 1.0)):
-        return x.tostring()
+        return x.tobytes()
     else:
         raise ValueError('Expecting 4 column array of values in [0,1]')
 

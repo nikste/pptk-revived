@@ -39,7 +39,10 @@ class TestPointsCreation(unittest.TestCase):
         self.assertTrue(P.shape == (10, 3))
 
     def test_view(self):
-        M = numpy.matrix('1,2,3')
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", PendingDeprecationWarning)
+            M = numpy.asmatrix(numpy.array([[1, 2, 3]]))
         with self.assertRaises(TypeError):
             M.view(pptk.Points)
         P = pptk.points([1, 2, 3])
@@ -63,7 +66,10 @@ class TestPointsCreation(unittest.TestCase):
         self.assertTrue(X[0, 0] != 0)
 
     def test_copy_from_matrix(self):
-        X = numpy.matrix('1,2;2,3', dtype='float32')
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", PendingDeprecationWarning)
+            X = numpy.asmatrix(numpy.array([[1, 2], [2, 3]], dtype='float32'))
         with self.assertRaises(TypeError):
             pptk.points(X, copy=False)
         P = pptk.points(X)
