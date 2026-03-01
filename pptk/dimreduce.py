@@ -33,6 +33,6 @@ def reduce_dims(X, method="pca", n_components=3):
     if method == "pca":
         return PCA(n_components=n_components).fit_transform(X).astype(numpy.float32)
     elif method == "mds":
-        return MDS(n_components=n_components).fit_transform(X).astype(numpy.float32)
+        return MDS(n_components=n_components, n_init=1, init="random", normalized_stress="auto").fit_transform(X).astype(numpy.float32)
     else:
         raise ValueError("method must be 'pca' or 'mds'")
