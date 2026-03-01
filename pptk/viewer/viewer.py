@@ -149,6 +149,7 @@ class viewer:
         show_info          bool             Show information text overlay
         show_axis          bool             Show axis / look-at cursor
         theta              float32          Camera elevation angle (radians)
+        window_size        2 x int          Window width and height in pixels
         =================  ===============  =================================
 
         (phi, theta, r) are spherical coordinates specifying camera position
@@ -164,6 +165,10 @@ class viewer:
             >>> v.set(point_size = 0.01)
 
         """
+        if 'window_size' in kwargs:
+            w, h = kwargs.pop('window_size')
+            msg = struct.pack('b', 13) + struct.pack('ii', int(w), int(h))
+            self.__send_and_wait(msg)
         for prop, val in kwargs.items():
             self.__send(_construct_set_msg(prop, val))
 
