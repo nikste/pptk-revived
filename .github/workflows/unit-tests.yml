@@ -1,0 +1,51 @@
+name: Unit tests
+
+# Run all non-build, non-display unit tests.
+# Build/packaging tests are covered by build-test.yml.
+# Viewer tests that require a GUI display are skipped.
+
+on:
+  push:
+    branches: [main, gh-pages]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit tests (Ubuntu 22.04, Python 3.12)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            cmake \
+            patchelf \
+            qtbase5-dev \
+            libqt5opengl5-dev \
+            libtbb-dev \
+            libeigen3-dev \
+            libgl1-mesa-dev
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pptk and test dependencies
+        run: |
+          pip install pytest "numpy<2" scikit-learn pillow
+          pip install -e .
+
+      - name: Run unit tests
+        run: pytest tests/ -v -m "not build and not requires_display"
