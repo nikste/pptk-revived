@@ -501,7 +501,7 @@ class viewer:
             msg = struct.pack('b', 9) + \
                 struct.pack('2f', t, t) + \
                 struct.pack('?', False)
-            self.__send(msg)
+            self.__send_and_wait(msg)
             filename = prefix \
                 + ('%0' + str(num_digits) + 'd') % (i + 1) + '.' + ext
             filename = os.path.join(folder, filename)
@@ -567,6 +567,18 @@ class viewer:
         try:
             s.connect(('localhost', self._portNumber))
             s.sendall(msg)
+        finally:
+            s.close()
+
+    def __send_and_wait(self, msg):
+        """Send *msg* and block until the viewer replies with its ACK."""
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect(('localhost', self._portNumber))
+            s.sendall(msg)
+            # The C++ viewer writes "1234" (4 bytes) after processing
+            # most message types.  Block until we receive it.
+            _recv_from_socket(4, s)
         finally:
             s.close()
 
