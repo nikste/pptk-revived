@@ -624,6 +624,15 @@ class Viewer : public QWindow, protected OpenGLFuncs {
         renderPointsFine();
         break;
       }
+      case 13: {  // resize window
+        qint32 w, h;
+        comm::receiveBytes((char*)&w, sizeof(qint32), clientConnection);
+        comm::receiveBytes((char*)&h, sizeof(qint32), clientConnection);
+        this->resize(w, h);
+        renderPoints();
+        renderPointsFine();
+        break;
+      }
       default:  // unrecognized message type
         break;
         // do nothing
