@@ -23,6 +23,7 @@ add_executable(viewer
   comm_funcs.h
   opengl_funcs.h
   text.h
+  line_renderer.h
   camera_dolly.h
   splines.h
   point_attributes.h)
