@@ -466,6 +466,15 @@ class PointCloud : protected OpenGLFuncs {
         camera, projection_mode);
   }
 
+  int queryNearPointOriginal(const QPointF& point, const QtCamera& camera) {
+    std::vector<unsigned int> indices;
+    queryNearPoint(indices, point, camera);
+    if (indices.empty()) return -1;
+    unsigned int octree_idx = indices[0];
+    if (octree_idx >= _num_points) return -1;
+    return (int)_octree.getIndices()[octree_idx];
+  }
+
   void selectNearPoint(const QPointF& point, const QtCamera& camera,
                        bool deselect = false) {
     std::vector<unsigned int> new_indices;
