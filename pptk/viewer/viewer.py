@@ -451,6 +451,42 @@ animate();
             result = result + self._offset
         return result
 
+    def query_point(self, x, y):
+        """Query the nearest point at screen coordinates (x, y).
+
+        Args:
+            x (float): Horizontal screen coordinate in pixels.
+            y (float): Vertical screen coordinate in pixels.
+
+        Returns:
+            int: Index of the nearest point, or -1 if no point found.
+
+        Examples:
+
+            >>> v = pptk.viewer(xyz)
+            >>> idx = v.query_point(400, 300)
+
+        """
+        msg = struct.pack('b', 18) + struct.pack('ff', float(x), float(y))
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect(('localhost', self._portNumber))
+            s.sendall(msg)
+            # Response layout from comm::sendScalar<int>:
+            # 1 byte: data type (3 = int)
+            # 8 bytes: number of dimensions (quint64)
+            # 8 bytes: dimension size (quint64)
+            # 4 bytes: the int value
+            dataType = ord(s.recv(1))
+            numDims = struct.unpack('Q', _recv_from_socket(8, s))[0]
+            dims = struct.unpack(str(numDims) + 'Q',
+                                 _recv_from_socket(numDims * 8, s))
+            body = _recv_from_socket(4, s)
+            result = struct.unpack('i', body)[0]
+        finally:
+            s.close()
+        return result
+
     def load(self, *args, **kwargs):
         """Load a new point cloud into the viewer.
 
