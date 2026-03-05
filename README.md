@@ -66,6 +66,17 @@ Set point size to 0.01.
 v.set(point_size=0.01)
 ```
 
+### Jupyter Notebooks
+
+Viewer objects display as interactive 3D visualizations in Jupyter notebooks — drag to orbit, scroll to zoom, right-click to pan:
+
+```python
+v = pptk.viewer(xyz, rgb)
+v  # renders inline via Three.js
+```
+
+See [`examples/jupyter_interactive_demo.ipynb`](examples/jupyter_interactive_demo.ipynb) for a full demo with RGB colors, scalar colormaps, and large point cloud subsampling.
+
 For more advanced examples, see [tutorials](https://heremaps.github.io/pptk/tutorial.html).
 
 ## Build

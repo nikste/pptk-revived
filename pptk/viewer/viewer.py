@@ -94,6 +94,10 @@ class viewer:
         positions_centered = numpy.asarray(
             positions - self._offset, dtype=numpy.float32)
 
+        # keep a Python-side copy for Jupyter display
+        self._positions = positions.copy()
+        self._attr = attr
+
         # upload points to viewer
         self.__load(positions_centered)
         self.attributes(*attr)
@@ -138,6 +142,134 @@ class viewer:
         """
         if self._process is not None:
             self._process.kill()
+
+    def _repr_html_(self):
+        """Jupyter notebook rich display: interactive 3D point cloud."""
+        import base64
+        import uuid
+        positions = getattr(self, '_positions', None)
+        if positions is None:
+            return '<pre>pptk viewer (no point data available)</pre>'
+        positions = numpy.asarray(positions, dtype=numpy.float64)
+        n = positions.shape[0]
+
+        # Subsample for browser performance
+        max_points = 200_000
+        if n > max_points:
+            idx = numpy.linspace(0, n - 1, max_points, dtype=int)
+            positions = positions[idx]
+        else:
+            idx = None
+
+        # Center for display
+        center = positions.mean(axis=0)
+        pts = numpy.asarray(positions - center, dtype=numpy.float32)
+
+        # Compute colors from first attribute if available
+        attr = getattr(self, '_attr', ())
+        colors = None
+        if attr:
+            a = numpy.asarray(attr[0], dtype=numpy.float32)
+            if a.ndim == 2 and a.shape[1] in (3, 4):
+                c = a[:, :3]
+                if idx is not None:
+                    c = c[idx]
+                colors = numpy.asarray(c, dtype=numpy.float32)
+            elif a.ndim == 1 and a.shape[0] == n:
+                vals = a if idx is None else a[idx]
+                vmin, vmax = numpy.nanmin(vals), numpy.nanmax(vals)
+                if vmax > vmin:
+                    t = (vals - vmin) / (vmax - vmin)
+                else:
+                    t = numpy.zeros_like(vals)
+                # jet colormap
+                colors = numpy.column_stack([
+                    numpy.clip(1.5 - numpy.abs(4.0 * t - 3.0), 0, 1),
+                    numpy.clip(1.5 - numpy.abs(4.0 * t - 2.0), 0, 1),
+                    numpy.clip(1.5 - numpy.abs(4.0 * t - 1.0), 0, 1),
+                ]).astype(numpy.float32)
+
+        pos_b64 = base64.b64encode(pts.tobytes()).decode('ascii')
+        col_b64 = ''
+        if colors is not None:
+            col_b64 = base64.b64encode(colors.tobytes()).decode('ascii')
+
+        extent = float(numpy.abs(pts).max()) or 1.0
+        div_id = 'pptk_' + uuid.uuid4().hex[:12]
+        num_display = pts.shape[0]
+
+        html = '''
+<div id="{div_id}" style="width:700px;height:500px;border:1px solid #ccc;position:relative;">
+<div style="position:absolute;top:4px;left:8px;color:#888;font:12px monospace;z-index:10;">
+{num_points} points (showing {num_display}){subsampled} &mdash; drag to orbit, scroll to zoom</div>
+</div>
+<script type="module">
+import * as THREE from 'https://esm.sh/three@0.170.0';
+import {{ OrbitControls }} from 'https://esm.sh/three@0.170.0/examples/jsm/controls/OrbitControls.js';
+
+const container = document.getElementById('{div_id}');
+const W = container.clientWidth, H = container.clientHeight;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+const camera = new THREE.PerspectiveCamera(45, W / H, 0.01, 1000);
+camera.position.set({cam_x}, {cam_y}, {cam_z});
+const renderer = new THREE.WebGLRenderer({{ antialias: true }});
+renderer.setSize(W, H);
+renderer.setPixelRatio(window.devicePixelRatio);
+container.appendChild(renderer.domElement);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+// Decode point data
+const posBytes = Uint8Array.from(atob('{pos_b64}'), c => c.charCodeAt(0));
+const positions = new Float32Array(posBytes.buffer);
+const N = positions.length / 3;
+
+const geometry = new THREE.BufferGeometry();
+geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+
+const hasColors = '{col_b64}'.length > 0;
+if (hasColors) {{
+  const colBytes = Uint8Array.from(atob('{col_b64}'), c => c.charCodeAt(0));
+  const colors = new Float32Array(colBytes.buffer);
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+}}
+
+const material = new THREE.PointsMaterial({{
+  size: {point_size},
+  sizeAttenuation: true,
+  vertexColors: hasColors,
+  color: hasColors ? 0xffffff : 0x4fc3f7,
+}});
+const points = new THREE.Points(geometry, material);
+scene.add(points);
+
+// Grid
+const grid = new THREE.GridHelper({grid_size}, 10, 0x444466, 0x333355);
+grid.rotation.x = Math.PI / 2;
+scene.add(grid);
+
+function animate() {{
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}}
+animate();
+</script>
+'''.format(
+            div_id=div_id,
+            num_points=n,
+            num_display=num_display,
+            subsampled=' subsampled' if idx is not None else '',
+            pos_b64=pos_b64,
+            col_b64=col_b64,
+            cam_x=extent * 1.2,
+            cam_y=extent * 1.2,
+            cam_z=extent * 1.2,
+            point_size=max(0.005, extent * 0.01),
+            grid_size=round(extent * 2, 2),
+        )
+        return html
 
     def clear(self):
         """ Removes the current point cloud in the viewer
@@ -257,6 +389,8 @@ class viewer:
         color_map = kwargs.get('color_map', 'jet')
         scale = kwargs.get('scale', None)
         preserve_camera = kwargs.get('preserve_camera', False)
+        self._positions = positions.copy()
+        self._attr = attr
         old_offset = getattr(self, '_offset', numpy.zeros(3))
         self._offset = positions.mean(axis=0)  # float64
         positions_centered = numpy.asarray(
