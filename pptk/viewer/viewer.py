@@ -599,6 +599,24 @@ class viewer:
             raise RuntimeError('expecting return code \'x\'')
         s.close()
 
+    def wait_async(self):
+        """Non-blocking version of wait().
+
+        Returns a ``concurrent.futures.Future`` that completes when
+        :kbd:`Enter`/:kbd:`Return` is pressed in the viewer.
+
+        Examples:
+
+            >>> v = pptk.viewer(xyz)
+            >>> future = v.wait_async()
+            >>> # ... do other work ...
+            >>> future.result()  # block until Enter pressed
+
+        """
+        from concurrent.futures import ThreadPoolExecutor
+        executor = ThreadPoolExecutor(max_workers=1)
+        return executor.submit(self.wait)
+
     def __load(self, positions):
         # if no points, then done
         if positions.size == 0:
