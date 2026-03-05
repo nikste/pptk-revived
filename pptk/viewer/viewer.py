@@ -374,6 +374,51 @@ animate();
             + vertices.tobytes()
         self.__send(msg)
 
+    def lines(self, vertices, edges, colors=None, width=1.0):
+        """Draw lines in the viewer.
+
+        Args:
+            vertices: (N, 3) array of vertex positions.
+            edges: (M, 2) array of vertex index pairs defining line segments.
+            colors: Optional (N, 4) array of RGBA colors per vertex.
+            width (float): Line width in pixels (default 1.0).
+
+        Examples:
+
+            >>> v = pptk.viewer(xyz)
+            >>> verts = numpy.array([[0,0,0],[1,0,0],[1,1,0]])
+            >>> edges = numpy.array([[0,1],[1,2]])
+            >>> v.lines(verts, edges, width=2.0)
+
+        """
+        vertices = numpy.asarray(vertices, dtype=numpy.float32).reshape(-1, 3)
+        edges = numpy.asarray(edges, dtype=numpy.uint32).reshape(-1, 2)
+        has_colors = 0
+        if colors is not None:
+            colors = numpy.asarray(colors, dtype=numpy.float32).reshape(-1, 4)
+            has_colors = 1
+        msg = struct.pack('b', 16) \
+            + struct.pack('i', vertices.shape[0]) \
+            + vertices.tobytes() \
+            + struct.pack('i', edges.shape[0]) \
+            + edges.tobytes() \
+            + struct.pack('i', has_colors)
+        if has_colors:
+            msg += colors.tobytes()
+        msg += struct.pack('f', float(width))
+        self.__send(msg)
+
+    def clear_lines(self):
+        """Remove all lines from the viewer.
+
+        Examples:
+
+            >>> v.clear_lines()
+
+        """
+        msg = struct.pack('b', 17)
+        self.__send(msg)
+
     def get(self, prop_name):
         """ Gets viewer property
 

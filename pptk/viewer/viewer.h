@@ -29,6 +29,7 @@
 #include "qt_camera.h"
 #include "selection_box.h"
 #include "text.h"
+#include "line_renderer.h"
 #include "timer.h"
 
 //#define TEST_FINE_RENDER
@@ -63,6 +64,7 @@ class Viewer : public QWindow, protected OpenGLFuncs {
     _selection_box = new SelectionBox(this, _context);
     _text = new Text(this, _context, font);
     _dolly = new CameraDolly();
+    _lines = new LineRenderer(this, _context);
 
     // initalize various states
     _socket_waiting_on_enter_key = NULL;
@@ -108,6 +110,7 @@ class Viewer : public QWindow, protected OpenGLFuncs {
     delete _selection_box;
     delete _text;
     delete _dolly;
+    delete _lines;
 
     // deletion of context must occur after viewer objects
     delete _context;
@@ -677,6 +680,38 @@ class Viewer : public QWindow, protected OpenGLFuncs {
         renderPointsFine();
         break;
       }
+      case 16: {  // load lines
+        qint32 numVertices;
+        comm::receiveBytes((char*)&numVertices, sizeof(qint32), clientConnection);
+        std::vector<float> vertices(3 * numVertices);
+        comm::receiveBytes((char*)&vertices[0],
+                           vertices.size() * sizeof(float), clientConnection);
+        qint32 numEdges;
+        comm::receiveBytes((char*)&numEdges, sizeof(qint32), clientConnection);
+        std::vector<unsigned int> edges(2 * numEdges);
+        comm::receiveBytes((char*)&edges[0],
+                           edges.size() * sizeof(unsigned int), clientConnection);
+        qint32 hasColors;
+        comm::receiveBytes((char*)&hasColors, sizeof(qint32), clientConnection);
+        std::vector<float> colors;
+        if (hasColors) {
+          colors.resize(4 * numVertices);
+          comm::receiveBytes((char*)&colors[0],
+                             colors.size() * sizeof(float), clientConnection);
+        }
+        float width;
+        comm::receiveBytes((char*)&width, sizeof(float), clientConnection);
+        _lines->loadLines(vertices, edges, colors, width);
+        renderPoints();
+        renderPointsFine();
+        break;
+      }
+      case 17: {  // clear lines
+        _lines->clear();
+        renderPoints();
+        renderPointsFine();
+        break;
+      }
       default:  // unrecognized message type
         break;
         // do nothing
@@ -759,6 +794,7 @@ class Viewer : public QWindow, protected OpenGLFuncs {
 #else
         _context->makeCurrent(this);
         _look_at->draw(_camera);
+        _lines->draw(_camera, _points->getBox());
         displayInfo();
         if (this->isExposed()) _context->swapBuffers(this);
         _context->doneCurrent();
@@ -824,6 +860,7 @@ class Viewer : public QWindow, protected OpenGLFuncs {
     _background->draw();
     _floor_grid->draw(_camera);
     _points->draw(_camera, _selection_box);
+    _lines->draw(_camera, _points->getBox());
     _look_at->draw(_camera);
     glFinish();
     // Read depth buffer
@@ -876,6 +913,7 @@ class Viewer : public QWindow, protected OpenGLFuncs {
     _background->draw();
     _floor_grid->draw(_camera);
     _points->draw(_camera, _selection_box);
+    _lines->draw(_camera, _points->getBox());
     _look_at->draw(_camera);
     _selection_box->draw();
     displayInfo();
@@ -1033,6 +1071,7 @@ class Viewer : public QWindow, protected OpenGLFuncs {
     _background->draw();
     _floor_grid->draw(_camera);
     _points->draw(_camera, _selection_box);
+    _lines->draw(_camera, _points->getBox());
     _look_at->draw(_camera);
     _selection_box->draw();
     _render_time = vltools::getTime() - _render_time;
@@ -1060,6 +1099,7 @@ class Viewer : public QWindow, protected OpenGLFuncs {
   LookAt* _look_at;
   Text* _text;
   CameraDolly* _dolly;
+  LineRenderer* _lines;
 
   float _dummy_accumulator;
   enum FineRenderState { INACTIVE, INITIALIZE, CHUNK, FINALIZE, TERMINATE };
