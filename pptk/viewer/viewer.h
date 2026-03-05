@@ -633,6 +633,22 @@ class Viewer : public QWindow, protected OpenGLFuncs {
         renderPointsFine();
         break;
       }
+      case 14: {  // depth capture
+        // receive length of filename string
+        quint64 stringLength;
+        comm::receiveBytes((char*)&stringLength, sizeof(quint64),
+                           clientConnection);
+
+        // receive filename string
+        std::string filename(stringLength, 'x');
+        comm::receiveBytes((char*)&filename[0], stringLength, clientConnection);
+        captureDepth(filename);
+        // Send ack so Python depth_capture() can block until file is written
+        char ack = 'k';
+        clientConnection->write(&ack, sizeof(char));
+        clientConnection->waitForBytesWritten();
+        break;
+      }
       default:  // unrecognized message type
         break;
         // do nothing
@@ -752,6 +768,56 @@ class Viewer : public QWindow, protected OpenGLFuncs {
     _dummy_accumulator /= (float)n;
     for (int i = 0; i < n; i++)
       _dummy_accumulator += sqrtf(pow(6.9f, log((float)i)));
+  }
+
+  void captureDepth(std::string filename) {
+    if (!_context->makeCurrent(this)) return;
+    int w = width() * this->devicePixelRatio();
+    int h = height() * this->devicePixelRatio();
+    // Render to FBO
+    GLuint fbo, rbo_color, rbo_depth;
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glGenRenderbuffers(1, &rbo_color);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo_color);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, w, h);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                              GL_RENDERBUFFER, rbo_color);
+    glGenRenderbuffers(1, &rbo_depth);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo_depth);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, w, h);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                              GL_RENDERBUFFER, rbo_depth);
+    glViewport(0, 0, w, h);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_POINT_SPRITE);
+    _background->draw();
+    _floor_grid->draw(_camera);
+    _points->draw(_camera, _selection_box);
+    _look_at->draw(_camera);
+    glFinish();
+    // Read depth buffer
+    std::vector<float> depth(w * h);
+    glReadPixels(0, 0, w, h, GL_DEPTH_COMPONENT, GL_FLOAT, &depth[0]);
+    // Clean up FBO
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glDeleteRenderbuffers(1, &rbo_depth);
+    glDeleteRenderbuffers(1, &rbo_color);
+    glDeleteFramebuffers(1, &fbo);
+    _context->doneCurrent();
+    // Convert to 16-bit grayscale image and save
+    QImage image(w, h, QImage::Format_Grayscale16);
+    for (int i = 0; i < h; i++) {
+      quint16* scanline = reinterpret_cast<quint16*>(image.scanLine(h - 1 - i));
+      for (int j = 0; j < w; j++) {
+        float d = depth[j + i * w];
+        scanline[j] = static_cast<quint16>(d * 65535.0f);
+      }
+    }
+    QString qstr_filename = QString::fromStdString(filename);
+    image.save(qstr_filename);
   }
 
   void printScreen(std::string filename) {
