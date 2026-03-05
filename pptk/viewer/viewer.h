@@ -712,6 +712,15 @@ class Viewer : public QWindow, protected OpenGLFuncs {
         renderPointsFine();
         break;
       }
+      case 18: {  // query nearest point at screen position
+        float screen_x, screen_y;
+        comm::receiveBytes((char*)&screen_x, sizeof(float), clientConnection);
+        comm::receiveBytes((char*)&screen_y, sizeof(float), clientConnection);
+        int idx = _points->queryNearPointOriginal(
+            QPointF(screen_x, screen_y), _camera);
+        comm::sendScalar<int>(idx, clientConnection);
+        break;
+      }
       default:  // unrecognized message type
         break;
         // do nothing
