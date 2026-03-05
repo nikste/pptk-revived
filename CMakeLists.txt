@@ -8,7 +8,7 @@ set(CMAKE_MODULE_PATH
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 set(PYTHON_INCLUDE_DIR ${Python3_INCLUDE_DIRS})
 set(PYTHON_LIBRARY ${Python3_LIBRARIES})
-find_package(OpenGL REQUIRED)
+find_package(OpenGL REQUIRED COMPONENTS OpenGL)
 find_package(Numpy REQUIRED)
 find_package(TBB REQUIRED)
 find_package(Eigen REQUIRED)
