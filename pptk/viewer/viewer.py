@@ -350,6 +350,30 @@ animate();
                 val = numpy.asarray(val, dtype=numpy.float64) - self._offset
             self.__send(_construct_set_msg(prop, val))
 
+    def select_polygon(self, vertices, mode='add'):
+        """Select points inside a polygon defined in NDC coordinates.
+
+        Args:
+            vertices: List of (x, y) tuples in normalized device coordinates
+                      (range [-1, 1]).
+            mode (str): 'add' to add to selection, 'sub' to subtract.
+
+        Examples:
+
+            >>> v = pptk.viewer(xyz)
+            >>> v.select_polygon([(-.5,-.5), (.5,-.5), (.5,.5), (-.5,.5)])
+
+        """
+        vertices = numpy.asarray(vertices, dtype=numpy.float32).reshape(-1, 2)
+        if vertices.shape[0] < 3:
+            raise ValueError('Polygon needs at least 3 vertices')
+        mode_code = 0 if mode == 'add' else 1
+        msg = struct.pack('b', 15) \
+            + struct.pack('i', mode_code) \
+            + struct.pack('i', vertices.shape[0]) \
+            + vertices.tobytes()
+        self.__send(msg)
+
     def get(self, prop_name):
         """ Gets viewer property
 

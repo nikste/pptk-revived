@@ -658,6 +658,25 @@ class Viewer : public QWindow, protected OpenGLFuncs {
         clientConnection->waitForBytesWritten();
         break;
       }
+      case 15: {  // polygon selection
+        qint32 mode;
+        comm::receiveBytes((char*)&mode, sizeof(qint32), clientConnection);
+        qint32 numVertices;
+        comm::receiveBytes((char*)&numVertices, sizeof(qint32), clientConnection);
+        std::vector<float> coords(2 * numVertices);
+        comm::receiveBytes((char*)&coords[0],
+                           coords.size() * sizeof(float), clientConnection);
+        std::vector<QPointF> polygon;
+        for (int i = 0; i < numVertices; i++) {
+          polygon.push_back(QPointF(coords[2*i], coords[2*i+1]));
+        }
+        SelectionBox::SelectMode selectMode =
+            mode == 0 ? SelectionBox::ADD : SelectionBox::SUB;
+        _points->selectInPolygon(polygon, _camera, selectMode);
+        renderPoints();
+        renderPointsFine();
+        break;
+      }
       default:  // unrecognized message type
         break;
         // do nothing
