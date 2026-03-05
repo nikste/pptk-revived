@@ -598,6 +598,32 @@ animate();
             ack += s.recv(1)
         s.close()
 
+    def depth_capture(self, filename):
+        """Capture depth buffer and save to filename as 16-bit grayscale.
+
+        The depth values are normalized to [0, 65535] where 0 is the
+        near plane and 65535 is the far plane.
+
+        Args:
+            filename (str): Output image path (e.g. 'depth.png').
+
+        Examples:
+
+            >>> v = pptk.viewer(xyz)
+            >>> v.depth_capture('depth.png')
+
+        """
+        import os
+        msg = struct.pack('b', 14) + _pack_string(os.path.abspath(filename))
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect(('localhost', self._portNumber))
+        s.sendall(msg)
+        # Block until viewer confirms the depth image has been written
+        ack = b''
+        while len(ack) == 0:
+            ack += s.recv(1)
+        s.close()
+
     def play(self, poses, ts=[], tlim=[-numpy.inf, numpy.inf], repeat=False,
              interp='cubic_natural'):
         """
