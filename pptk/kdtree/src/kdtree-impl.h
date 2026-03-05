@@ -12,10 +12,26 @@
 #include "kdtree.h"
 
 #ifdef USE_TBB
-#include "tbb/blocked_range.h"
-#include "tbb/parallel_for.h"
-#include "tbb/scalable_allocator.h"
-#include "tbb/task_group.h"
+#if __has_include(<oneapi/tbb/blocked_range.h>)
+#include <oneapi/tbb/blocked_range.h>
+#else
+#include <tbb/blocked_range.h>
+#endif
+#if __has_include(<oneapi/tbb/parallel_for.h>)
+#include <oneapi/tbb/parallel_for.h>
+#else
+#include <tbb/parallel_for.h>
+#endif
+#if __has_include(<oneapi/tbb/scalable_allocator.h>)
+#include <oneapi/tbb/scalable_allocator.h>
+#else
+#include <tbb/scalable_allocator.h>
+#endif
+#if __has_include(<oneapi/tbb/task_group.h>)
+#include <oneapi/tbb/task_group.h>
+#else
+#include <tbb/task_group.h>
+#endif
 inline void* Allocate(size_t size) { return scalable_malloc(size); }
 inline void Free(void* ptr) { return scalable_free(ptr); }
 #else

@@ -1,6 +1,7 @@
 include(FindPackageHandleStandardArgs)
 
-find_path(TBB_INCLUDE_DIR tbb/tbb.h
+find_path(TBB_INCLUDE_DIR
+  NAMES tbb/tbb.h oneapi/tbb/tbb.h
   PATHS /usr/include /usr/local/include)
 
 find_library(TBB_tbb_LIBRARY tbb
