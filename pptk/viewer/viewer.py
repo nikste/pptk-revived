@@ -312,6 +312,7 @@ animate();
         lookat             3 x float32      Camera look-at position
         phi                float32          Camera azimuthal angle (radians)
         point_size         float32          Point size in world space
+        point_sizes        ? x float32      Per-point sizes (0 = use global)
         r                  float32          Camera distance to look-at point
         selected           ? x uint         Indices of selected points
         show_grid          bool             Show floor grid
@@ -991,6 +992,7 @@ def _init_properties():
     _properties['color_map'] = _encode_rgbas
     _properties['color_map_scale'] = _encode_floats
     _properties['curr_attribute_id'] = _encode_uint
+    _properties['point_sizes'] = _encode_floats
 
 
 def _construct_get_msg(prop_name):
