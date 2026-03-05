@@ -26,6 +26,7 @@ class PointCloud : protected OpenGLFuncs {
         _buffer_octree_ids(0),
         _buffer_user_sizes(0),
         _has_user_sizes(false),
+        _point_shape(0),
         _color_map(4, 1.0f),
         _color_map_min(0.0f),
         _color_map_max(1.0f),
@@ -240,6 +241,7 @@ class PointCloud : protected OpenGLFuncs {
     _program.setUniformValue("scalar_min", _color_map_min);
     _program.setUniformValue("scalar_max", _color_map_max);
     _program.setUniformValue("color_map_n", _color_map.size() / 4.0f);
+    _program.setUniformValue("point_shape", _point_shape);
 
     _program.enableAttributeArray("position");
     _program.enableAttributeArray("size");
@@ -521,6 +523,7 @@ class PointCloud : protected OpenGLFuncs {
   const vltools::Box3<float>& getBox() const { return _full_box; }
   float getFloor() const { return _num_points == 0 ? 0.0f : _full_box.min(2); }
   void setPointSize(float point_size) { _point_size = point_size; }
+  void setPointShape(int shape) { _point_shape = shape; }
   void setUserSizes(const std::vector<float>& sizes) {
     if (sizes.size() != _num_points) return;
     // Reorder sizes to match octree ordering
@@ -609,13 +612,23 @@ class PointCloud : protected OpenGLFuncs {
         "#version 120\n"
         "\n"
         "uniform float point_size;\n"
+        "uniform int point_shape;\n"
         "varying vec4 frag_color;\n"
         "varying vec2 frag_center;\n"
         "varying float inner_radius;\n"
         "varying float outer_radius;\n"
         "\n"
         "void main() {\n"
-        "  float weight = clamp((outer_radius - length(frag_center - gl_FragCoord.xy)) / (outer_radius - inner_radius), 0, 1);\n"
+        "  vec2 delta = frag_center - gl_FragCoord.xy;\n"
+        "  float dist;\n"
+        "  if (point_shape == 1) {\n"
+        "    dist = max(abs(delta.x), abs(delta.y));\n"
+        "  } else if (point_shape == 2) {\n"
+        "    dist = abs(delta.x) + abs(delta.y);\n"
+        "  } else {\n"
+        "    dist = length(delta);\n"
+        "  }\n"
+        "  float weight = clamp((outer_radius - dist) / (outer_radius - inner_radius), 0, 1);\n"
         "  gl_FragColor = frag_color * vec4(1, 1, 1, weight);\n"
         "}\n";
     _context->makeCurrent(_window);
@@ -708,6 +721,7 @@ class PointCloud : protected OpenGLFuncs {
   QOpenGLShaderProgram _program;
 
   float _point_size;
+  int _point_shape;
   std::size_t _num_points;
   std::vector<float> _positions;
   std::vector<float> _colors;
