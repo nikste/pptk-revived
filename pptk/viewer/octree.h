@@ -558,7 +558,20 @@ class Octree {
 
   Node* buildTreeHelper(unsigned int* indices, unsigned char* labels,
                         const unsigned int count, const float (&cube_corner)[3],
-                        const float cube_size) {
+                        const float cube_size, unsigned int depth = 0) {
+    // Guard against excessive recursion (e.g. many coincident points)
+    if (depth > 40) {
+      // Force leaf node creation
+      Node* node = new Node();
+      node->point_index = indices - &_indices[0];
+      node->point_count = count;
+      node->is_leaf = true;
+      float centroid_xyz[3];
+      computeCentroid(centroid_xyz, indices, count);
+      node->centroid_index = addCentroid(centroid_xyz);
+      _ptr_point_size->push_back(cube_size);
+      return node;
+    }
     std::vector<float>& point_xyz = *_ptr_point_xyz;
     std::vector<float>& point_size = *_ptr_point_size;
     Node* node;
@@ -613,7 +626,7 @@ class Octree {
             (i & 1) == 0 ? cube_corner[2] : cube_center[2]};
         node->children[i] =
             buildTreeHelper(ptr_indices, ptr_labels, child_counts[i],
-                            child_corner, 0.5f * cube_size);
+                            child_corner, 0.5f * cube_size, depth + 1);
         ptr_indices += child_counts[i];
         ptr_labels += child_counts[i];
       }
