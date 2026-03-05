@@ -15,7 +15,11 @@
 #include "small_node.h"
 
 #ifdef USE_TBB
-#include "tbb/scalable_allocator.h"
+#if __has_include(<oneapi/tbb/scalable_allocator.h>)
+#include <oneapi/tbb/scalable_allocator.h>
+#else
+#include <tbb/scalable_allocator.h>
+#endif
 #endif  // USE_TBB
 
 namespace pointkd {

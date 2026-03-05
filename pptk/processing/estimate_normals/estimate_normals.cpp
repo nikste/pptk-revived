@@ -10,7 +10,11 @@
 #include "progress_bar.h"
 #include "python_util.h"
 #include "timer.h"
-#include "tbb/global_control.h"
+#if __has_include(<oneapi/tbb/global_control.h>)
+#include <oneapi/tbb/global_control.h>
+#else
+#include <tbb/global_control.h>
+#endif
 
 using namespace Eigen;
 using namespace std;
