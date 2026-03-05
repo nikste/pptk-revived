@@ -346,6 +346,9 @@ class Viewer : public QWindow, protected OpenGLFuncs {
           GLfloat point_size = *(GLfloat*)&payload[0];
           _points->setPointSize(point_size);
           glPointSize(point_size);
+        } else if (!strcmp(propertyName.c_str(), "point_shape")) {
+          if (payloadLength != sizeof(unsigned int)) break;
+          _points->setPointShape(*(unsigned int*)&payload[0]);
         } else if (!strcmp(propertyName.c_str(), "bg_color")) {
           if (payloadLength != 4 * sizeof(float)) break;
           float* rgba = (GLfloat*)&payload[0];

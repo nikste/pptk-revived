@@ -311,6 +311,7 @@ animate();
         floor_color        4 x float32      Floor color in RGBA [0, 1]
         lookat             3 x float32      Camera look-at position
         phi                float32          Camera azimuthal angle (radians)
+        point_shape        str/uint         Point shape: 'circle', 'square', 'diamond'
         point_size         float32          Point size in world space
         point_sizes        ? x float32      Per-point sizes (0 = use global)
         r                  float32          Camera distance to look-at point
@@ -339,6 +340,11 @@ animate();
             w, h = kwargs.pop('window_size')
             msg = struct.pack('b', 13) + struct.pack('ii', int(w), int(h))
             self.__send_and_wait(msg)
+        if 'point_shape' in kwargs:
+            shape = kwargs.pop('point_shape')
+            if isinstance(shape, str):
+                shape = _point_shape_code.get(shape, 0)
+            self.__send(_construct_set_msg('point_shape', int(shape)))
         for prop, val in kwargs.items():
             if prop == 'lookat' and hasattr(self, '_offset'):
                 val = numpy.asarray(val, dtype=numpy.float64) - self._offset
@@ -993,6 +999,7 @@ def _init_properties():
     _properties['color_map_scale'] = _encode_floats
     _properties['curr_attribute_id'] = _encode_uint
     _properties['point_sizes'] = _encode_floats
+    _properties['point_shape'] = _encode_uint
 
 
 def _construct_get_msg(prop_name):
@@ -1063,3 +1070,5 @@ _interp_code = {'constant': 0,
                 'linear': 1,
                 'cubic_natural': 2,
                 'cubic_periodic': 3}
+
+_point_shape_code = {'circle': 0, 'square': 1, 'diamond': 2}
