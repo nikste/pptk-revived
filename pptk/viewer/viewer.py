@@ -99,6 +99,35 @@ class viewer:
         self.attributes(*attr)
         self.color_map(color_map, scale)
 
+    @classmethod
+    def connect(cls, port):
+        """Connect to an already-running viewer on the given port.
+
+        Args:
+            port (int): TCP port number of the running viewer.
+
+        Returns:
+            viewer: A viewer instance connected to the existing process.
+
+        Examples:
+
+            >>> v = pptk.viewer(xyz)
+            >>> port = v.port
+            >>> v2 = pptk.viewer.connect(port)
+
+        """
+        import numpy
+        obj = cls.__new__(cls)
+        obj._portNumber = int(port)
+        obj._process = None
+        obj._offset = numpy.zeros(3)
+        return obj
+
+    @property
+    def port(self):
+        """TCP port number of this viewer's server."""
+        return self._portNumber
+
     def close(self):
         """ Closes the point cloud viewer
 
@@ -107,8 +136,8 @@ class viewer:
             >>> v.close()
 
         """
-        self._process.kill()
-        pass
+        if self._process is not None:
+            self._process.kill()
 
     def clear(self):
         """ Removes the current point cloud in the viewer

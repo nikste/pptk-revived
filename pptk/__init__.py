@@ -11,6 +11,8 @@ from .ply import load_ply
 
 __version__ = '0.1.1'
 
+connect = viewer.connect
+
 
 def set(*args, **kwargs):
     """Module-level set() is not supported (issue #64).
