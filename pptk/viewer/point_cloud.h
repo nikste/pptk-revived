@@ -432,6 +432,28 @@ class PointCloud : protected OpenGLFuncs {
     updateSelectionMask();
   }
 
+  void selectInPolygon(const std::vector<QPointF>& polygon,
+                       const QtCamera& camera,
+                       SelectionBox::SelectMode mode) {
+    if (polygon.size() < 3) return;
+    QMatrix4x4 mvp = camera.computeMVPMatrix(_full_box);
+    std::vector<unsigned int> new_indices;
+    for (unsigned int i = 0; i < _positions.size() / 3; i++) {
+      float* v = &_positions[3 * i];
+      QVector4D p(v[0], v[1], v[2], 1);
+      p = mvp * p;
+      p /= p.w();
+      if (p.z() < -1.0f || p.z() > 1.0f) continue;
+      if (pointInPolygon(QPointF(p.x(), p.y()), polygon))
+        new_indices.push_back(i);
+    }
+    if (mode == SelectionBox::ADD)
+      mergeIndices(_selected_ids, new_indices);
+    else
+      removeIndices(_selected_ids, new_indices);
+    updateSelectionMask();
+  }
+
   void queryNearPoint(std::vector<unsigned int>& indices, const QPointF& point,
                       const QtCamera& camera) {
     Octree::ProjectionMode projection_mode =
@@ -636,6 +658,21 @@ class PointCloud : protected OpenGLFuncs {
     _program.addShaderFromSourceCode(QOpenGLShader::Fragment, fsCode.c_str());
     _program.link();
     _context->doneCurrent();
+  }
+
+  static bool pointInPolygon(const QPointF& point,
+                             const std::vector<QPointF>& polygon) {
+    // Ray-casting algorithm
+    bool inside = false;
+    std::size_t n = polygon.size();
+    for (std::size_t i = 0, j = n - 1; i < n; j = i++) {
+      float yi = polygon[i].y(), yj = polygon[j].y();
+      float xi = polygon[i].x(), xj = polygon[j].x();
+      if (((yi > point.y()) != (yj > point.y())) &&
+          (point.x() < (xj - xi) * (point.y() - yi) / (yj - yi) + xi))
+        inside = !inside;
+    }
+    return inside;
   }
 
   static void mergeIndices(std::vector<unsigned int>& x,
