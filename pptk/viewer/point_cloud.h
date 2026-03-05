@@ -24,6 +24,8 @@ class PointCloud : protected OpenGLFuncs {
         _buffer_sizes(0),
         _buffer_selection_mask(0),
         _buffer_octree_ids(0),
+        _buffer_user_sizes(0),
+        _has_user_sizes(false),
         _color_map(4, 1.0f),
         _color_map_min(0.0f),
         _color_map_max(1.0f),
@@ -79,7 +81,11 @@ class PointCloud : protected OpenGLFuncs {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, _num_points * sizeof(unsigned int),
                  NULL, GL_DYNAMIC_DRAW);
 
+    // create buffer for per-point user sizes
+    glGenBuffers(1, &_buffer_user_sizes);
+
     _context->doneCurrent();
+    _has_user_sizes = false;
     _attributes.reset();
     initColors();
   }
@@ -120,6 +126,7 @@ class PointCloud : protected OpenGLFuncs {
     glDeleteBuffers(1, &_buffer_sizes);
     glDeleteBuffers(1, &_buffer_selection_mask);
     glDeleteBuffers(1, &_buffer_octree_ids);
+    glDeleteBuffers(1, &_buffer_user_sizes);
 
     glGenBuffers(1, &_buffer_positions);
     glBindBuffer(GL_ARRAY_BUFFER, _buffer_positions);
@@ -145,8 +152,11 @@ class PointCloud : protected OpenGLFuncs {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, _num_points * sizeof(unsigned int),
                  NULL, GL_DYNAMIC_DRAW);
 
+    glGenBuffers(1, &_buffer_user_sizes);
+
     _context->doneCurrent();
 
+    _has_user_sizes = false;
     _selected_ids.clear();
     _attributes.reset();
     initColors();
@@ -168,7 +178,9 @@ class PointCloud : protected OpenGLFuncs {
     glDeleteBuffers(1, &_buffer_sizes);
     glDeleteBuffers(1, &_buffer_selection_mask);
     glDeleteBuffers(1, &_buffer_octree_ids);
+    glDeleteBuffers(1, &_buffer_user_sizes);
     _context->doneCurrent();
+    _has_user_sizes = false;
     _octree.buildTree(_positions, _sizes, 32);
     _attributes.reset();
   }
@@ -240,6 +252,14 @@ class PointCloud : protected OpenGLFuncs {
     glBindBuffer(GL_ARRAY_BUFFER, _buffer_selection_mask);
     _program.setAttributeArray("selected", GL_FLOAT, 0, 1);
 
+    if (_has_user_sizes) {
+      _program.enableAttributeArray("user_size");
+      glBindBuffer(GL_ARRAY_BUFFER, _buffer_user_sizes);
+      _program.setAttributeArray("user_size", GL_FLOAT, 0, 1);
+    } else {
+      _program.setAttributeValue("user_size", 0.0f);
+    }
+
     int curr_attr_idx = (int)_attributes.currentIndex();
     bool use_color_map = _attributes.dim(curr_attr_idx) == 1;
     bool broadcast_attr = _attributes.size(curr_attr_idx) == 1;
@@ -276,6 +296,10 @@ class PointCloud : protected OpenGLFuncs {
     }
     if (use_color_map && !broadcast_attr) {
       _program.disableAttributeArray("scalar");
+    }
+
+    if (_has_user_sizes) {
+      _program.disableAttributeArray("user_size");
     }
 
     _program.disableAttributeArray("position");
@@ -497,6 +521,20 @@ class PointCloud : protected OpenGLFuncs {
   const vltools::Box3<float>& getBox() const { return _full_box; }
   float getFloor() const { return _num_points == 0 ? 0.0f : _full_box.min(2); }
   void setPointSize(float point_size) { _point_size = point_size; }
+  void setUserSizes(const std::vector<float>& sizes) {
+    if (sizes.size() != _num_points) return;
+    // Reorder sizes to match octree ordering
+    std::vector<float> reordered(sizes.size());
+    for (std::size_t i = 0; i < _num_points; i++) {
+      reordered[_octree.getIndicesR()[i]] = sizes[i];
+    }
+    _context->makeCurrent(_window);
+    glBindBuffer(GL_ARRAY_BUFFER, _buffer_user_sizes);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * reordered.size(),
+                 (GLvoid*)&reordered[0], GL_STATIC_DRAW);
+    _context->doneCurrent();
+    _has_user_sizes = true;
+  }
   void setCurrentAttributeIndex(std::size_t i) {
     bool index_changed = i != _attributes.currentIndex();
     _attributes.setCurrentIndex(i);
@@ -533,6 +571,7 @@ class PointCloud : protected OpenGLFuncs {
         "attribute float scalar;\n"
         "attribute float size;\n"
         "attribute float selected;\n"
+        "attribute float user_size;\n"
         "varying vec4 frag_color;\n"
         "varying vec2 frag_center;\n"
         "\n"
@@ -556,8 +595,9 @@ class PointCloud : protected OpenGLFuncs {
         "  }\n"
         "  float d = abs(dot(position.xyz - eye,view));\n"
         "  if (projection_mode == 1) d = 1.0;\n"
+        "  float effective_size = user_size > 0.0 ? user_size : point_size;\n"
         "  if (size == 0.0) {\n"
-        "    inner_radius = point_size / d * height / (2.0 * image_t);\n"
+        "    inner_radius = effective_size / d * height / (2.0 * image_t);\n"
         "    outer_radius = inner_radius + 1.0;\n"
         "  } else {\n"
         "    inner_radius = 0.5 * size / d * height / (2.0 * image_t);\n"
@@ -681,6 +721,8 @@ class PointCloud : protected OpenGLFuncs {
   GLuint _buffer_sizes;
   GLuint _buffer_selection_mask;
   GLuint _buffer_octree_ids;
+  GLuint _buffer_user_sizes;
+  bool _has_user_sizes;
   GLuint _texture_color_map;
   Octree _octree;
   PointAttributes _attributes;

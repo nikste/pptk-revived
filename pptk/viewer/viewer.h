@@ -424,6 +424,12 @@ class Viewer : public QWindow, protected OpenGLFuncs {
           if (payloadLength != sizeof(float) * 2) break;
           float* v = (float*)&payload[0];
           _points->setColorMapScale(v[0], v[1]);
+        } else if (!strcmp(propertyName.c_str(), "point_sizes")) {
+          quint64 num_sizes = payloadLength / sizeof(float);
+          if (payloadLength != num_sizes * sizeof(float)) break;
+          float* ptr = (float*)&payload[0];
+          std::vector<float> sizes(ptr, ptr + num_sizes);
+          _points->setUserSizes(sizes);
         } else if (!strcmp(propertyName.c_str(), "curr_attribute_id")) {
           if (payloadLength != sizeof(unsigned int)) break;
           _points->setCurrentAttributeIndex(*(unsigned int*)&payload[0]);
