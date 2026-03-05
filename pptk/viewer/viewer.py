@@ -11,6 +11,9 @@ _viewer_dir = os.path.dirname(inspect.getfile(inspect.currentframe()))
 if not os.path.isabs(_viewer_dir):
     _viewer_dir = os.path.abspath(_viewer_dir)
 
+# Maximum number of points before warning (500 million)
+_MAX_POINTS_WARNING = 500_000_000
+
 __all__ = ['viewer']
 
 
@@ -755,8 +758,12 @@ animate();
         # if no points, then done
         if positions.size == 0:
             return
-        # construct message
         numPoints = int(positions.size / 3)
+        if numPoints > _MAX_POINTS_WARNING:
+            warnings.warn(
+                'Loading {} points ({:.1f} GB). This may cause memory issues.'
+                .format(numPoints, numPoints * 12 / 1e9))
+        # construct message
         msg = struct.pack('b', 1) \
             + struct.pack('i', numPoints) + positions.tobytes()
         # send message to viewer
@@ -767,6 +774,10 @@ animate();
         if positions.size == 0:
             return
         numPoints = int(positions.size / 3)
+        if numPoints > _MAX_POINTS_WARNING:
+            warnings.warn(
+                'Loading {} points ({:.1f} GB). This may cause memory issues.'
+                .format(numPoints, numPoints * 12 / 1e9))
         msg = struct.pack('b', 11) \
             + struct.pack('i', numPoints) + positions.tobytes()
         self.__send(msg)
@@ -776,6 +787,10 @@ animate();
         if positions.size == 0:
             return
         numPoints = int(positions.size / 3)
+        if numPoints > _MAX_POINTS_WARNING:
+            warnings.warn(
+                'Loading {} points ({:.1f} GB). This may cause memory issues.'
+                .format(numPoints, numPoints * 12 / 1e9))
         msg = struct.pack('b', 12) \
             + struct.pack('i', numPoints) + positions.tobytes()
         self.__send(msg)
