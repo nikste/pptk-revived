@@ -1,33 +1,33 @@
 # pptk-revived - Point Processing Toolkit
 
-This is a fork of [heremaps/pptk](https://github.com/heremaps/pptk) maintained by [Nikolaas Steenbergen](https://github.com/nikste), updated to build and run on modern Python (3.12+) and CMake (3.28+).
-
-Source: https://github.com/nikste/pptk_revived
-
-Copyright (C) 2011-2018 HERE Europe B.V.
+A fork of [heremaps/pptk](https://github.com/heremaps/pptk), updated to build and run on modern Python (3.12+) and CMake (3.28+).
 
 The Point Processing Toolkit (pptk) is a Python package for visualizing and processing 2-d/3-d point clouds.
 
-At present, pptk consists of the following features.
-
-* A 3-d point cloud viewer that
-  - accepts any 3-column numpy array as input,
-  - renders tens of millions of points interactively using an octree-based level of detail mechanism,
-  - supports point selection for inspecting and annotating point data.
-* A fully parallelized point k-d tree that supports k-nearest neighbor queries and r-near range queries
-  (both build and queries have been parallelized).
-* A normal estimation routine based on principal component analysis of point cloud neighborhoods.
-
-[Homepage](https://heremaps.github.io/pptk/index.html)
-
 ![pptk screenshots](/docs/source/tutorials/viewer/images/tutorial_banner.png)
 
-The screenshots above show various point datasets visualized using pptk.
-The `bildstein1` Lidar point cloud from Semantic3D (left),
-Beijing GPS trajectories from Geolife (middle left),
-`DistrictofColumbia.geojson` 2-d polygons from US building footprints (middle right),
-and a Mobius strip (right).
-For details, see the [tutorials](https://heremaps.github.io/pptk/tutorial.html).
+## Features
+
+* **3D point cloud viewer** — renders tens of millions of points interactively using octree-based level of detail
+  - Accepts any 3-column NumPy array as input
+  - Point selection (rectangular and polygon/lasso) for inspecting and annotating point data
+  - Per-point sizes, colors (RGB or scalar colormap), and shapes (circle, square, diamond)
+  - Line and edge rendering between points
+  - Depth buffer export via `depth_capture()`
+  - Camera animation with `play()` and `record()`
+  - HiDPI / Retina display support
+  - Auto-centering for large coordinates (e.g. UTM) to avoid float32 precision loss
+  - Window resizing via `set(window_size=...)`
+  - `preserve_camera` option for `viewer.load()` to keep the current viewpoint
+  - `viewer.connect(port)` to attach to an already-running viewer process
+  - `wait_async()` returning a `Future` for non-blocking wait
+* **Jupyter notebook integration** — viewer objects render as interactive 3D visualizations inline via Three.js (drag to orbit, scroll to zoom, right-click to pan)
+* **Parallelized k-d tree** — k-nearest neighbor and r-near range queries (both build and queries are parallelized via TBB)
+* **Normal estimation** — PCA-based surface normal estimation using local point neighborhoods
+* **PLY file loader** — `pptk.load_ply()` reads ASCII and binary PLY files
+* **Sequence animation** — `pptk.sequence()` for animating through lists of point clouds
+
+[Homepage](https://heremaps.github.io/pptk/index.html) · [Tutorials](https://heremaps.github.io/pptk/tutorial.html)
 
 ## License
 
@@ -58,11 +58,6 @@ import pptk  # or: import pptk_revived
 
 x = np.random.rand(100, 3)
 v = pptk.viewer(x)
-```
-
-Set point size to 0.01.
-
-```python
 v.set(point_size=0.01)
 ```
 
@@ -75,9 +70,15 @@ v = pptk.viewer(xyz, rgb)
 v  # renders inline via Three.js
 ```
 
-See [`examples/jupyter_interactive_demo.ipynb`](examples/jupyter_interactive_demo.ipynb) for a full demo with RGB colors, scalar colormaps, and large point cloud subsampling.
+### Examples
 
-For more advanced examples, see [tutorials](https://heremaps.github.io/pptk/tutorial.html).
+| Notebook | Description |
+|---|---|
+| [`examples/quickstart.ipynb`](examples/quickstart.ipynb) | Basic viewer usage, scalar and RGB coloring |
+| [`examples/documentation_examples.ipynb`](examples/documentation_examples.ipynb) | k-NN queries, normal estimation, camera animation, Möbius strip |
+| [`examples/jupyter_interactive_demo.ipynb`](examples/jupyter_interactive_demo.ipynb) | Inline Three.js viewer with colormaps and large point cloud subsampling |
+
+For more examples, see the [tutorials](https://heremaps.github.io/pptk/tutorial.html).
 
 ## Build
 
@@ -147,3 +148,8 @@ cd ..
 python setup.py bdist_wheel
 pip install dist\pptk_revived-*.whl
 ```
+
+## Acknowledgements
+
+Originally developed by [HERE Europe B.V.](https://github.com/heremaps) (Copyright 2011–2018).
+This fork is maintained by [Nikolaas Steenbergen](https://github.com/nikste).
