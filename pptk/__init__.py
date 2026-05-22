@@ -9,7 +9,7 @@ from .dimreduce import reduce_dims
 from .colors import label_to_colors
 from .ply import load_ply
 
-__version__ = '0.1.1'
+__version__ = '0.3.0'
 
 connect = viewer.connect
 

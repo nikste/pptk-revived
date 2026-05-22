@@ -168,7 +168,7 @@ def list_libs():
 
 setup(
     name='pptk-revived',
-    version='0.1.1',
+    version='0.3.0',
     description='A Python package for facilitating point cloud processing.',
     author='Nikolaas Steenbergen',
     classifiers=[
