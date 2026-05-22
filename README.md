@@ -83,10 +83,10 @@ For more examples, see the [tutorials](https://heremaps.github.io/pptk/tutorial.
 ## Build
 
 pptk-revived contains C++ extensions (Qt viewer, k-d tree, normal estimator)
-that must be compiled before packaging. The build process is:
-
-1. Compile C++ extensions with CMake
-2. Package the compiled artifacts into a wheel
+that are compiled with CMake. You don't run CMake yourself — the `setuptools`
+build backend invokes it automatically while building the wheel (see the
+`CMakeBuild` command in [`setup.py`](setup.py)), so a single `uv build`
+produces a ready-to-install wheel.
 
 ### System requirements
 
@@ -101,53 +101,66 @@ that must be compiled before packaging. The build process is:
 On Ubuntu/Debian:
 
 ```bash
-sudo apt install build-essential cmake patchelf libtbb-dev libeigen3-dev qtbase5-dev libqt5opengl5-dev
+sudo apt install build-essential cmake patchelf \
+    libtbb-dev libeigen3-dev qtbase5-dev libqt5opengl5-dev libgl1-mesa-dev
 ```
 
-### Build with uv (recommended)
+### Build a wheel
 
 ```bash
-# 1. Compile C++ extensions
-mkdir _cmake_build && cd _cmake_build
-cmake .. -DCMAKE_BUILD_TYPE=Release
-cmake --build . -- -j$(nproc)
-cd ..
-
-# 2. Package into a wheel (uv detects the pre-compiled .so files and skips cmake)
-uv build
-
-# 3. Install the wheel
+uv build                                   # compiles the C++ + packages -> dist/
 uv pip install dist/pptk_revived-*.whl
 ```
 
-### Build with pip / venv
+> **Run build/install commands from the repository root**, never from inside
+> `_cmake_build/`. The CMake build copies a `setup.py` into `_cmake_build/`, so
+> running `uv build` or `pip install .` from there builds a broken, stale
+> package (you'll see CMake fail with *"source directory … does not appear to
+> contain CMakeLists.txt"*).
+
+This is exactly what the release CI runs (`.github/workflows/build-wheels.yml`).
+Plain pip works the same way, since it uses the same backend:
 
 ```bash
-# 1. Create a venv
-python3 -m venv venv && source venv/bin/activate
-pip install numpy
-
-# 2. Compile C++ extensions
-mkdir _cmake_build && cd _cmake_build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE=$(which python)
-cmake --build . -- -j$(nproc)
-cd ..
-
-# 3. Package and install
-python setup.py bdist_wheel
-pip install dist/pptk_revived-*.whl --force-reinstall
+pip install .          # build C++ and install
+python -m build        # or only build the wheel + sdist into dist/
 ```
+
+> **Forcing a recompile.** To avoid needless work, the build **skips CMake when
+> the compiled artifacts already exist** in the source tree. After editing any
+> C++ source, set `PPTK_FORCE_CMAKE=1` to clear the cached artifacts and rebuild
+> from scratch:
+>
+> ```bash
+> PPTK_FORCE_CMAKE=1 uv build
+> ```
+
+### Development install (editable)
+
+```bash
+uv sync                                    # set up the dev env + editable install
+# after changing C++ sources, force a recompile:
+PPTK_FORCE_CMAKE=1 uv pip install -e .
+```
+
+While iterating on C++ you can recompile a single target and refresh the
+in-tree artifact the editable install loads, instead of rebuilding everything
+(after an initial build has configured `_cmake_build/`):
+
+```bash
+cmake --build _cmake_build --target viewer -- -j$(nproc)
+cp _cmake_build/pptk/viewer/viewer pptk/viewer/viewer
+```
+
+Available targets: `viewer`, `kdtree`, `vfuncs`, `estimate_normals` (for the
+library modules, copy the resulting `.so` into the matching `pptk/<module>/`
+directory).
 
 ### Windows
 
-```bat
-mkdir _cmake_build && cd _cmake_build
-cmake -G "NMake Makefiles" ..
-nmake
-cd ..
-python setup.py bdist_wheel
-pip install dist\pptk_revived-*.whl
-```
+The same `uv build` command applies. Make sure Qt5, TBB, and Eigen are
+discoverable by CMake (e.g. via `CMAKE_PREFIX_PATH`); CMake selects the Visual
+Studio generator by default.
 
 ## Acknowledgements
 
