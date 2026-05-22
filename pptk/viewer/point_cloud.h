@@ -201,7 +201,12 @@ class PointCloud : protected OpenGLFuncs {
 
   // render methods
   void draw(const QtCamera& camera, const SelectionBox* box = NULL) {
-    queryLOD(_octree_ids, camera, 0.25f);
+    // Coarse (interactive) LOD. Lower fudge_factor collapses octree nodes into
+    // large world-space centroid splats sooner; the fine pass uses 1.0f. A
+    // value too far below 1.0f makes points balloon during interaction and then
+    // visibly snap smaller once the fine pass runs. 0.5f keeps interaction fast
+    // while halving that size jump.
+    queryLOD(_octree_ids, camera, 0.5f);
     if (_octree_ids.empty()) return;
     draw(&_octree_ids[0], (unsigned int)_octree_ids.size(), camera, box);
   }
