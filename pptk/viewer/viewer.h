@@ -256,13 +256,18 @@ class Viewer : public QWindow, protected OpenGLFuncs {
     _camera.zoom(ev->angleDelta().y() / 120.0f);
     _camera.save();
     renderPoints();
-    renderPointsFine(500);
+    // Debounce the fine render so continuous scrolling stays on the fast coarse
+    // pass, but correct quickly once scrolling stops (was 500ms, which left the
+    // large coarse splats on screen long enough to look like a glitch).
+    renderPointsFine(100);
   }
 
   virtual void exposeEvent(QExposeEvent* ev) {
     Q_UNUSED(ev);
     renderPoints();
-    renderPointsFine(1000);
+    // Coalesce expose storms (show/uncover/move) without holding the oversized
+    // coarse splats for a full second after the window settles (was 1000ms).
+    renderPointsFine(200);
   }
 
   virtual void resizeEvent(QResizeEvent* ev) {
